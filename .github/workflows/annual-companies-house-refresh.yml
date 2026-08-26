@@ -1,0 +1,146 @@
+name: Annual Companies House Refresh
+
+on:
+  workflow_dispatch:
+    inputs:
+      accounts_months:
+        description: Rolling electronic-accounts months to process
+        required: true
+        default: "12"
+        type: string
+      pipelinenews_ref:
+        description: Exact PipelineNews commit containing the REPD baseline
+        required: true
+        default: "c909d37911c8f9eed2e3db7b8518b096390fc929"
+        type: string
+
+concurrency:
+  group: annual-companies-house-refresh
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      urls: ${{ steps.urls.outputs.urls }}
+      stamp: ${{ steps.stamp.outputs.stamp }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install requests==2.32.3
+      - id: stamp
+        run: echo "stamp=$(date -u +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
+      - id: urls
+        env:
+          MONTHS: ${{ inputs.accounts_months }}
+        run: |
+          set -euo pipefail
+          [[ "$MONTHS" =~ ^([1-9]|1[0-2])$ ]]
+          python build/python/202608262245-companies-house-source.py --output work --list-monthly-output monthly.json --latest-monthly-count "$MONTHS"
+          echo "urls=$(cat monthly.json)" >> "$GITHUB_OUTPUT"
+  accounts-month:
+    needs: discover
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        url: ${{ fromJson(needs.discover.outputs.urls) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install requests==2.32.3 lxml==5.3.0
+      - name: Download one official month
+        run: python build/python/202608262245-companies-house-source.py --output work/source --skip-basic --accounts-url "${{ matrix.url }}"
+      - name: Stream selected XBRL facts
+        run: python build/python/202608262245-extract-accounts.py --input work/source/raw --output work/accounts-month.ndjson
+      - run: test -s work/accounts-month.ndjson
+      - uses: actions/upload-artifact@v4
+        with:
+          name: annual-accounts-${{ strategy.job-index }}
+          path: |
+            work/accounts-month.ndjson
+            work/source/source-manifest.json
+          if-no-files-found: error
+          retention-days: 3
+  compose:
+    needs: [discover, accounts-month]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Ventusltd/pipelinenews
+          ref: ${{ inputs.pipelinenews_ref }}
+          path: repd-source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install requests==2.32.3 lxml==5.3.0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: annual-accounts-*
+          path: work/months
+      - name: Merge newest annual fact per company
+        run: python build/python/202608262245-merge-accounts.py --input work/months --output work/accounts-latest.ndjson
+      - name: Download current company snapshot once
+        run: python build/python/202608262245-companies-house-source.py --output work/basic
+      - name: Compile stable annual cartridges
+        env:
+          BUILD_STAMP: ${{ needs.discover.outputs.stamp }}
+        run: python build/python/202608262245-compile-companies-house.py --raw work/basic/raw --accounts work/accounts-latest.ndjson --repd repd-source/data/projects --output work/current --stamp "$BUILD_STAMP"
+      - name: Consolidate source receipts
+        run: |
+          set -euo pipefail
+          find work/months -name source-manifest.json -print0 | sort -z | xargs -0 jq -s '{schema:"companies-house-annual-accounts-sources-v1", accounts_files:[.[].accounts_files[]]}' > work/current/accounts-source-manifest-v1.json
+          cp work/basic/source-manifest.json work/current/company-source-manifest-v1.json
+      - name: Privacy and output gates
+        run: |
+          set -euo pipefail
+          ! grep -RinE '"(director_name|date_of_birth|residential_address|individual_psc)"[[:space:]]*:' work/current
+          test -s work/current/manifest-v1.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: annual-companies-house-current-${{ needs.discover.outputs.stamp }}
+          path: work/current/
+          if-no-files-found: error
+          retention-days: 14
+  overwrite-current:
+    needs: [discover, compose]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: annual-companies-house-current-*
+          path: staged
+          merge-multiple: true
+      - name: Overwrite stable current records
+        run: |
+          set -euo pipefail
+          mkdir -p data/current
+          cp staged/*.json data/current/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com
+          git add data/current
+          git diff --cached --quiet && exit 0
+          git commit -m "data: annual Companies House refresh ${{ needs.discover.outputs.stamp }}"
+          git pull --rebase origin main
+          git push origin HEAD:main
