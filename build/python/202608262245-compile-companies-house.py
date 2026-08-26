@@ -77,6 +77,7 @@ def accounts(path):
     result={}
     if path.exists():
         for line in path.read_text().splitlines():
+            if not line.strip():continue
             row=json.loads(line); result[row["company_number"]]=row
     return result
 def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
