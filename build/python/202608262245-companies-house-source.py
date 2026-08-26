@@ -38,6 +38,13 @@ def latest_monthly_accounts(count: int) -> list[str]:
     candidates = links(MONTHLY_ACCOUNTS_PAGE, r"Accounts[_-]Monthly[_-]Data")
     if not candidates:
         raise RuntimeError("No official monthly accounts ZIP links discovered")
+    def period(url: str):
+        match = re.search(r"-([A-Za-z]+)(20\d{2})\.zip$", url)
+        if not match:
+            return (0, 0)
+        parsed = datetime.strptime(match.group(1), "%B")
+        return (int(match.group(2)), parsed.month)
+    candidates.sort(key=period)
     return candidates[-count:] if count else []
 
 def download(url: str, directory: Path) -> dict:
