@@ -48,7 +48,10 @@ def latest_monthly_accounts(count: int) -> list[str]:
     return candidates[-count:] if count else []
 
 def download(url: str, directory: Path) -> dict:
-    name = Path(urllib.parse.urlparse(url).path).name
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https" or parsed.hostname != "download.companieshouse.gov.uk":
+        raise RuntimeError(f"Source URL is not an official Companies House download: {url}")
+    name = Path(parsed.path).name
     target = directory / name
     digest = hashlib.sha256()
     size = 0
