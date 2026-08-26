@@ -26,6 +26,7 @@ BTM_EXACT={
     "49200":"BTM_RAIL_INFRASTRUCTURE",
     "47110":"BTM_SUPERMARKET",
 }
+INDUSTRIAL_DIVISIONS={f"{value:02d}" for value in [*range(5,10),*range(10,34),35,36,37,38,39]}
 def norm(value):
     value=re.sub(r"\b(limited|ltd|plc|holdings?|group|uk)\b"," ",str(value).lower())
     return re.sub(r"[^a-z0-9]+"," ",value).strip()
@@ -41,6 +42,7 @@ def sic_tags(values):
         match=re.match(r"(\d{5})",value or "")
         if not match:continue
         code=match.group(1); division=code[:2]
+        if division in INDUSTRIAL_DIVISIONS:tags.add("INDUSTRIAL_SIC_B_TO_E")
         if code in BTM_EXACT:tags.add(BTM_EXACT[code])
         for tag,prefixes in BTM_PREFIXES.items():
             if division in prefixes:tags.add(tag)
@@ -103,7 +105,7 @@ def main():
                           "turnover":facts.get("turnover"),"cash":facts.get("cash"),"assets_gte_10m":large,"energy_relevant_large_company":energy_relevant_large,"btm_tags":tags,
                           "repd_name_candidates":matches,"probable_project_spv":probable_spv}
     out=Path(a.output);out.mkdir(parents=True,exist_ok=True); rows=list(selected.values())
-    groups={"energy-relevant-large-companies":[x for x in rows if x["energy_relevant_large_company"]],"repd-linked":[x for x in rows if x["repd_name_candidates"]],"project-spv-candidates":[x for x in rows if x["probable_project_spv"]],"btm-opportunities":[x for x in rows if x["energy_relevant_large_company"]]}
+    groups={"industrial-assets-gte-10m":[x for x in rows if x["assets_gte_10m"] and "INDUSTRIAL_SIC_B_TO_E" in x["btm_tags"]],"energy-relevant-assets-gte-10m":[x for x in rows if x["energy_relevant_large_company"]],"repd-linked":[x for x in rows if x["repd_name_candidates"]],"project-spv-candidates":[x for x in rows if x["probable_project_spv"]],"btm-opportunities":[x for x in rows if x["energy_relevant_large_company"]]}
     files={}
     for name,data in groups.items():
         path=out/f"{name}-v1.json";path.write_text(json.dumps({"schema":"companies-house-cartridge-v1","snapshot_id":a.stamp,"generated_at":datetime.now(timezone.utc).isoformat(),"records":data},separators=(",",":"))+"\n")
