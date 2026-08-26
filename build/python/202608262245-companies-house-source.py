@@ -26,7 +26,9 @@ def latest_basic() -> list[str]:
     if not dates:
         return candidates
     latest = max(dates)
-    return [x for m, x in dated if m and m.group(1) == latest]
+    current = [x for m, x in dated if m and m.group(1) == latest]
+    one_file = [x for x in current if "asonefile" in x.lower()]
+    return one_file[:1] if one_file else current
 
 def latest_daily_accounts(count: int) -> list[str]:
     candidates = links(DAILY_ACCOUNTS_PAGE, r"Accounts[_-]Bulk[_-]Data")
