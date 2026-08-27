@@ -1,0 +1,198 @@
+{
+  "schema": "companies-house-bounded-candidate-source-v1",
+  "generation": "202608272016",
+  "parent_generation": "202608271507",
+  "base_commit": "cc61a74edea5321b9654a22af2e589a56c6dc19b",
+  "deployment_state": "not-authorised",
+  "purpose": "Reacquire the bounded Companies House candidate under the official eight-alphanumeric company-number domain, publish zstd Parquet only after independent pinned-DuckDB readback, and separate Ventus usage context from source rights",
+  "diagnosis": {
+    "failed_run": 33083546190,
+    "failed_job": 98557047397,
+    "archive": "Accounts_Monthly_Data-May2026.zip",
+    "archive_bytes": 1975424256,
+    "member_path": "2138003GAT25WW1RN369-2025-12-31/reports/2138003GAT25WW1RN369-2025-12-31-T01.xhtml",
+    "member_suffix": "-T01.xhtml",
+    "previous_document_ceiling_bytes": 32000000,
+    "member_bytes_exposed_by_failure_log": false,
+    "failure_class": "LEGITIMATE_IXBRL_DOCUMENT_EXCEEDED_FIXED_MEMBER_CEILING"
+  },
+  "source_files": [
+    {
+      "path": ".github/workflows/202608272016-bounded-companies-house-candidate.yml",
+      "sha256": "f688231854e75ed2274d16235a67b0992093595570643a40d74f87218a19c479"
+    },
+    {
+      "path": "build/python/202608272016-freeze-companies-house-plan.py",
+      "sha256": "e054e803cdbfa9316b9b07ca4377c3d33ecd5473858b481ab9171e540382ac7d"
+    },
+    {
+      "path": "build/python/202608272016-download-planned-archive.py",
+      "sha256": "e7b5b11cdada47530999b724b7f95e9e61c6c82753fc675962c1a53456b900a8"
+    },
+    {
+      "path": "build/python/202608272016-extract-bounded-accounts.py",
+      "sha256": "70e554b23ffcac5dbd1482c17bcc764b512efd855876ff3cb9dc821a71428022"
+    },
+    {
+      "path": "build/python/202608272016-verify-companies-house-candidate.py",
+      "sha256": "b37c634d3369c8110712aaf36cffb5df303d4f93eb64b79bae224bdc69441033"
+    },
+    {
+      "path": "tests/test_202608272016_document_ceiling.py",
+      "sha256": "fd4819037c6cbf0df534299307ca91793aaaa46ac8ac0e335ab56c6f41b518ae"
+    },
+    {
+      "path": "manifests/202608272016-bounded-companies-house-candidate.json",
+      "sha256": "SELF"
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "build/python/202608271507-freeze-companies-house-plan.py",
+      "sha256": "b43064ef8784a802327326882b49ca1c51ad6dfff8e5db90ee274824960d75c2"
+    },
+    {
+      "path": "build/python/202608271507-download-planned-archive.py",
+      "sha256": "747eca36b6c090f1b241632c5fb338c427f6ca570fa2e20da7c2e19056e92486"
+    },
+    {
+      "path": "build/python/202608271507-extract-bounded-accounts.py",
+      "sha256": "6a5e5da4f3b9c976689488fb99227d5992380fb9375dd090678ea8bfa1018135"
+    },
+    {
+      "path": "build/python/202608271507-verify-companies-house-candidate.py",
+      "sha256": "22e8393dc55606e3f24381ed0fad0bf0ae545c51127a7a68c90f65e3a8558f02"
+    },
+    {
+      "path": "tests/test_202608271507_bounded_companies_house.py",
+      "sha256": "08980228b06f00ca89ce0b780dbd49ca1d68867c8dd29dfa7f4fb8e4fa0da131"
+    },
+    {
+      "path": "manifests/202608271507-bounded-companies-house-candidate.json",
+      "sha256": "2805518f899f01764637a835c2c601623758c8c6ee1146c220090eafa9c9c5bd"
+    },
+    {
+      "path": "build/python/202608262245-compile-companies-house.py",
+      "sha256": "f7e5ebfb6ddc885b3b2a05deeedff5bf4b4f808b78ef62974baa7025487dcc90"
+    },
+    {
+      "path": "build/python/202608262245-merge-accounts.py",
+      "sha256": "d6ff055510c9b42a1710d6f4cdd22288d7334d20e3ee4190be13ff5c219c2e2e"
+    }
+  ],
+  "data_discipline": {
+    "owning_repository": "Ventusltd/companies",
+    "ogl_attribution_required": "Contains public sector information licensed under the Open Government Licence v3.0. Source: Companies House.",
+    "analytical_grain": "one row per distinct company in the candidate cartridge union",
+    "declared_key": [
+      "company_number"
+    ],
+    "format": "parquet",
+    "compression": "zstd",
+    "engine": {
+      "name": "duckdb",
+      "version": "1.3.2",
+      "threads": 1
+    },
+    "touched_partition_policy": "full-generation-rewrite-from-empty-target",
+    "readback_gate": "rows equal distinct company_number keys; null keys and duplicate key groups equal zero",
+    "json_projection_retained": true,
+    "foreign_data_copied": false
+  },
+  "discipline_references": {
+    "conventions_only": true,
+    "data_repository": {
+      "repository": "Ventusltd/data-gb-electricity",
+      "commit": "7c492745c974f6b8610cb1209f996b1553abb498",
+      "files": [
+        {
+          "path": "README.md",
+          "blob_sha": "b9be3a5650ef1aefe2fc17c14ead1b8587930c82"
+        },
+        {
+          "path": ".github/workflows/monthly_update.yml",
+          "blob_sha": "9a311f095e9e535d2195413ec2f98b3f50792298"
+        },
+        {
+          "path": "pipelines/port_csv_to_parquet_impl.py",
+          "blob_sha": "2c6d50843d17134dfb73321ce995c8dbafedc519"
+        },
+        {
+          "path": "pipelines/fetch_elexon_api_to_parquet_hardened.py",
+          "blob_sha": "adb661ad4c3debd05b76697d4ce7f492ac5aaf5c"
+        }
+      ]
+    },
+    "federation_manual": {
+      "repository": "Ventusltd/globalgrid2050-hompage",
+      "path": "docs/DATA_DISCIPLINE_MANUAL.md",
+      "blob_sha": "c96b18cdd08df62471966241e7901bb634814bf8"
+    }
+  },
+  "limits": {
+    "maximum_document_bytes": 128000000,
+    "maximum_other_member_bytes": 32000000,
+    "maximum_archive_bytes": 4000000000,
+    "maximum_total_compressed_bytes": 12000000000,
+    "maximum_expanded_bytes_per_archive": 60000000000,
+    "maximum_compression_ratio": 250,
+    "maximum_members_per_archive": 2000000,
+    "maximum_nested_zip_bytes": 100000000,
+    "maximum_zip_nesting": 1,
+    "account_extraction_passes": 2,
+    "compiler_passes": 2,
+    "candidate_seal_passes": 2,
+    "parquet_maximum_file_bytes": 90000000,
+    "candidate_maximum_total_bytes": 200000000
+  },
+  "safety_delta": {
+    "changed": [
+      "Parsed .html/.xhtml/.xml members may be up to 128000000 bytes",
+      "The candidate closure adds one deterministic zstd Parquet file and one DuckDB audit receipt"
+    ],
+    "unchanged": [
+      "Non-document members remain capped at 32000000 bytes",
+      "Aggregate expanded-byte ceiling remains 60000000000 bytes",
+      "Compression-ratio ceiling remains 250:1",
+      "Archive/member/nesting ceilings and path/encryption/symlink checks remain active",
+      "JSON cartridges remain the source-compatible projection and no foreign repository data is copied"
+    ]
+  },
+  "publication": {
+    "candidate_path": "data/candidates/202608272016/",
+    "candidate_branch": "candidate/202608272016",
+    "stable_path": "data/current/",
+    "stable_path_must_change": false,
+    "pages_must_change": false,
+    "promotion_eligible": false
+  },
+  "candidate_outputs": {
+    "json_cartridges": 5,
+    "analytical_parquet": "companies-v1.parquet",
+    "duckdb_audit": "parquet-audit-v1.json",
+    "exact_candidate_file_closure_enforced": true
+  },
+  "usage_context": "NON_COMMERCIAL_OPEN_SOURCE",
+  "source_licence": {
+    "name": "Open Government Licence v3.0",
+    "url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    "attribution": "Contains public sector information licensed under the Open Government Licence v3.0. Source: Companies House.",
+    "rights_caveat": "OGL applies to Crown copyright material; third-party rights and data-protection duties may still apply.",
+    "accuracy_caveat": "Companies House records what was filed; it does not verify every filed statement."
+  },
+  "source_rights_are_distinct_from_usage_context": true,
+  "predecessor": {
+    "generation": "202608271547",
+    "run": 33086066404,
+    "status": "failed_before_publish",
+    "blocker": "legacy company-number regex rejected the official eight-alphanumeric identifier domain"
+  },
+  "company_number_domain": {
+    "normalisation": "uppercase",
+    "accepted_pattern": "^[A-Z0-9]{8}$",
+    "source_semantics": "Companies House identifiers are eight alphanumeric characters",
+    "declared_key": [
+      "company_number"
+    ]
+  }
+}
