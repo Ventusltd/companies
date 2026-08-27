@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 COMPILER = ROOT / "build/python/202608262245-compile-companies-house.py"
 
 
-def write_fixture(root: Path) -> tuple[Path, Path, Path, Path]:
+def write_fixture(root: Path) -> tuple[Path, Path, Path, Path, Path]:
     raw = root / "raw"
     repd = root / "repd"
     output = root / "output"
@@ -44,19 +44,24 @@ def write_fixture(root: Path) -> tuple[Path, Path, Path, Path]:
     ]
     accounts.write_text("".join(json.dumps(row) + "\n" for row in facts))
     (repd / "projects.json").write_text(json.dumps({"projects": [
-        {"repd_ref": "13599", "name": "Beacon Fen Energy Park", "operator": "Low Carbon Limited", "capacity_mw": 400},
-        {"repd_ref": "90001", "name": "Old Wind Farm", "operator": "Old Wind Energy Limited", "capacity_mw": 80},
+        {"repd_ref": "13599", "gg_project_id": "GG2050-REPD-13599", "name": "Beacon Fen Energy Park", "operator": "Low Carbon Limited", "capacity_mw": 400, "technology": "solar", "status": "Application Submitted", "geometry_status": "valid", "latitude": 52.9, "longitude": -0.2},
+        {"repd_ref": "90001", "gg_project_id": "GG2050-REPD-90001", "name": "Old Wind Farm", "operator": "Old Wind Energy Limited", "capacity_mw": 80, "technology": "wind_onshore", "status": "Operational", "geometry_status": "missing", "latitude": None, "longitude": None},
     ]}))
-    return raw, accounts, repd, output
+    news=root / "news.json"
+    news.write_text(json.dumps({"schema":"globalgrid2050.major-project-news.v9.5.1","canonical_items":[
+        {"gg_article_id":"GG2050-NEWS-BEACON","repd_ref":"13599","role":"PRIMARY_MATCH","eligible_for_news_signal":True,"event":"CONSENT","headline":"Beacon Fen consent","published":"2026-08-21","source":"GOV.UK","url":"https://example.test/beacon","confidence":91},
+        {"gg_article_id":"GG2050-NEWS-RELATED","repd_ref":"13599","role":"RELATED_DEVELOPMENT","eligible_for_news_signal":False,"event":"PROJECT UPDATE","headline":"Excluded related item","published":"2026-08-22","source":"Example","url":"https://example.test/related","confidence":40},
+    ]}))
+    return raw, accounts, repd, news, output
 
 
 def main() -> None:
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
-        raw, accounts, repd, output = write_fixture(root)
+        raw, accounts, repd, news, output = write_fixture(root)
         subprocess.run([
             "python", str(COMPILER), "--raw", str(raw), "--accounts", str(accounts),
-            "--repd", str(repd), "--output", str(output), "--stamp", "202608270257",
+            "--repd", str(repd), "--news", str(news), "--output", str(output), "--stamp", "202608270257",
         ], check=True)
         cartridges = {}
         for path in output.glob("*-v1.json"):
@@ -70,6 +75,11 @@ def main() -> None:
         records = {row["company_number"]: row for rows in cartridges.values() for row in rows}
         assert "11111111" not in records
         assert records["01234567"]["classification"] == "CONFIRMED_REPD_COMPANY"
+        assert records["01234567"]["repd_news_count"] == 1
+        beacon=next(item for item in records["01234567"]["repd_name_candidates"] if item["repd_ref"]=="13599")
+        assert beacon["atlas_url"].startswith("https://globalgrid2050.com/repd_grid_atlasv8/?repd_ref=13599")
+        assert beacon["canonical_news_count"] == 1
+        assert beacon["latest_canonical_news"][0]["gg_article_id"] == "GG2050-NEWS-BEACON"
         assert records["AB123456"]["classification"] == "PROBABLE_PROJECT_SPV"
         assert records["22222222"]["classification"] == "UNRESOLVED_CANDIDATE"
         assert records["87654321"]["classification"] == "CONFIRMED_REPD_COMPANY"
@@ -80,6 +90,8 @@ def main() -> None:
         manifest = json.loads((output / "manifest-v1.json").read_text())
         assert manifest["schema"] == "companies-house-manifest-v1"
         assert manifest["financial_currency"] == "GBP"
+        assert manifest["inputs"]["news_sha256"]
+        assert manifest["inputs"]["repd"]["files"] == 1
         print(json.dumps({"status": "PASS", "selected_companies": len(records), "cartridges": {key: len(value) for key, value in cartridges.items()}}, sort_keys=True))
 
 
