@@ -113,14 +113,30 @@ def accounts(path):
             if not line.strip():continue
             row=json.loads(line); result[row["company_number"]]=row
     return result
+def previous_records(path):
+    if not path:return {}
+    data=json.loads(path.read_text())
+    if data.get("schema")!="companies-house-retained-v1" or not isinstance(data.get("records"),list):
+        raise RuntimeError("Previous retained-company state is malformed")
+    result={}
+    for row in data["records"]:
+        number=row.get("company_number","")
+        if not COMPANY_NUMBER.fullmatch(number) or number in result:
+            raise RuntimeError("Previous retained-company state has invalid or duplicate company numbers")
+        result[number]=row
+    return result
 def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 def repd_closure(root):
     entries=[f"{path.name}:{digest(path)}" for path in sorted(root.glob("*.json"))]
     return {"files":len(entries),"sha256":hashlib.sha256(("\n".join(entries)+"\n").encode()).hexdigest()}
 def main():
     p=argparse.ArgumentParser();p.add_argument("--raw",required=True);p.add_argument("--accounts",required=True);p.add_argument("--repd",required=True);p.add_argument("--news");p.add_argument("--output",required=True);p.add_argument("--stamp",required=True)
+    p.add_argument("--previous-records");p.add_argument("--refresh-policy",choices=("annual-bootstrap","quarterly-incremental"),default="annual-bootstrap")
     a=p.parse_args(); raw=Path(a.raw); accounts_path=Path(a.accounts); repd_root=Path(a.repd); news_path=Path(a.news) if a.news else None
-    acc=accounts(accounts_path); news=news_index(news_path); repd=repd_index(repd_root,news); selected={}; generated_at=datetime.now(timezone.utc)
+    previous_path=Path(a.previous_records) if a.previous_records else None
+    if a.refresh_policy=="quarterly-incremental" and previous_path is None:
+        raise RuntimeError("Quarterly compilation requires --previous-records from a verified bootstrap")
+    previous=previous_records(previous_path); acc=accounts(accounts_path); news=news_index(news_path); repd=repd_index(repd_root,news); selected={}; generated_at=datetime.now(timezone.utc)
     for archive in sorted(raw.glob("*.zip")):
         if "basiccompanydata" not in archive.name.lower():continue
         with zipfile.ZipFile(archive) as z:
@@ -134,7 +150,8 @@ def main():
                         sics=[field(row,f"SICCode.SicText_{i}") for i in range(1,5)]; tags=sic_tags(sics)
                         previous_names=[field(row,f"PreviousName_{i}.CompanyName") for i in range(1,11)]
                         previous_names=[value for value in previous_names if value]
-                        facts=acc.get(number,{})
+                        old=previous.get(number,{})
+                        facts=acc.get(number) or {key:old.get(key) for key in ("accounts_date","total_assets","net_assets","turnover","cash") if old.get(key) is not None}
                         large=max(facts.get("total_assets",0) or 0,facts.get("net_assets",0) or 0)>=LIMIT
                         key=norm(name); matches=repd_candidates(name,repd)
                         for previous_name in previous_names:
@@ -160,15 +177,17 @@ def main():
                           "repd_name_candidates":matches,"probable_project_spv":probable_spv,"classification":classification(matches,probable_spv,renewable_name),
                           "repd_news_count":len(company_news),"latest_repd_news":sorted(company_news.values(),key=lambda item:(item.get("published") or "",item["gg_article_id"]),reverse=True)[:5],
                           "evidence":evidence,"last_checked_date":generated_at.date().isoformat()}
-    out=Path(a.output);out.mkdir(parents=True,exist_ok=True); rows=list(selected.values())
+    out=Path(a.output);out.mkdir(parents=True,exist_ok=True); rows=sorted(selected.values(),key=lambda row:row["company_number"])
     groups={"industrial-assets-gte-10m":[x for x in rows if x["assets_gte_10m"] and "INDUSTRIAL_SIC_B_TO_E" in x["btm_tags"]],"energy-relevant-assets-gte-10m":[x for x in rows if x["energy_relevant_large_company"]],"repd-linked":[x for x in rows if x["repd_name_candidates"]],"project-spv-candidates":[x for x in rows if x["classification"]=="PROBABLE_PROJECT_SPV"],"btm-opportunities":[x for x in rows if x["btm_opportunity"]]}
     files={}
     for name,data in groups.items():
         path=out/f"{name}-v1.json";path.write_text(json.dumps({"schema":"companies-house-cartridge-v1","snapshot_id":a.stamp,"generated_at":generated_at.isoformat(),"records":data},separators=(",",":"))+"\n")
         files[name]={"path":path.name,"records":len(data),"sha256":digest(path)}
-    provenance={"accounts_sha256":digest(accounts_path),"repd":repd_closure(repd_root),"news_sha256":digest(news_path) if news_path else None,
+    retained=out/"retained-companies-v1.json";retained.write_text(json.dumps({"schema":"companies-house-retained-v1","snapshot_id":a.stamp,"generated_at":generated_at.isoformat(),"records":rows},separators=(",",":"))+"\n")
+    state={"path":retained.name,"records":len(rows),"sha256":digest(retained)}
+    provenance={"accounts_sha256":digest(accounts_path),"previous_records_sha256":digest(previous_path) if previous_path else None,"repd":repd_closure(repd_root),"news_sha256":digest(news_path) if news_path else None,
       "identity_rule":"REPD name rules establish candidates; canonical PRIMARY_MATCH news only annotates an established REPD candidate"}
-    manifest=out/"manifest-v1.json";manifest.write_text(json.dumps({"schema":"companies-house-manifest-v1","snapshot_id":a.stamp,"refresh_policy":"annual-overwrite","threshold_gbp":LIMIT,"financial_currency":"GBP","inputs":provenance,"files":files,"privacy":{"directors":False,"individual_psc":False,"residential_addresses":False}},indent=2)+"\n")
+    manifest=out/"manifest-v1.json";manifest.write_text(json.dumps({"schema":"companies-house-manifest-v1","snapshot_id":a.stamp,"refresh_policy":a.refresh_policy,"threshold_gbp":LIMIT,"financial_currency":"GBP","inputs":provenance,"state":state,"files":files,"privacy":{"directors":False,"individual_psc":False,"residential_addresses":False}},indent=2)+"\n")
     if not rows:raise RuntimeError("Compilation produced no qualifying records")
     print(json.dumps({k:v["records"] for k,v in files.items()}))
 if __name__=="__main__":main()
