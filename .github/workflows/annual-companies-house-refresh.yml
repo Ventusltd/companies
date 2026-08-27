@@ -116,7 +116,7 @@ jobs:
       - name: Compile stable annual cartridges
         env:
           BUILD_STAMP: ${{ needs.discover.outputs.stamp }}
-        run: python build/python/202608262245-compile-companies-house.py --raw work/basic/raw --accounts work/accounts-latest.ndjson --repd repd-source/data/projects --output work/current --stamp "$BUILD_STAMP"
+        run: python build/python/202608262245-compile-companies-house.py --raw work/basic/raw --accounts work/accounts-latest.ndjson --repd repd-source/data/projects --news repd-source/data/news/202608261927-major-project-news-v9-5-1.json --output work/current --stamp "$BUILD_STAMP"
       - name: Consolidate source receipts
         run: |
           set -euo pipefail
