@@ -18,6 +18,8 @@ The owner triggers one annual run. It processes the latest rolling electronic-ac
 
 The workflow does not continuously poll Companies House and does not commit raw archives.
 
+Before any bulk download starts, a deterministic fixture proves the £10 million threshold, industrial and behind-the-meter tags, exact and previous-name REPD matches, classification boundary, and privacy exclusions.
+
 ## Boundaries
 
 - Companies House is credited as the public-register source.
