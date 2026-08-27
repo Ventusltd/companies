@@ -8,6 +8,12 @@ The repository contains reviewed acquisition, accounts-extraction and cartridge-
 
 [Run Annual Companies House Refresh](https://github.com/Ventusltd/companies/actions/workflows/annual-companies-house-refresh.yml)
 
+Safe non-publishing checkpoints:
+
+- [Validate Companies House Compiler](https://github.com/Ventusltd/companies/actions/workflows/validate-companies-house-compiler.yml)
+- [Plan Companies House Refresh](https://github.com/Ventusltd/companies/actions/workflows/plan-companies-house-refresh.yml)
+- [Recovery and progress checkpoint](PROGRESS.md)
+
 The owner triggers one annual run. It processes the latest rolling electronic-accounts year, then overwrites these compact current views:
 
 - industrial companies in SIC Sections B–E with total or net assets of at least £10 million;
