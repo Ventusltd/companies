@@ -8,6 +8,11 @@ on:
         required: true
         default: "12"
         type: string
+      maximum_download_gb:
+        description: Fail before download when the official compressed closure exceeds this many GB
+        required: true
+        default: "40"
+        type: string
       pipelinenews_ref:
         description: Exact PipelineNews commit containing the REPD baseline
         required: true
@@ -40,7 +45,9 @@ jobs:
     permissions:
       contents: read
     outputs:
-      urls: ${{ steps.urls.outputs.urls }}
+      archives: ${{ steps.urls.outputs.archives }}
+      basic_url: ${{ steps.urls.outputs.basic_url }}
+      basic_bytes: ${{ steps.urls.outputs.basic_bytes }}
       stamp: ${{ steps.stamp.outputs.stamp }}
     steps:
       - uses: actions/checkout@v4
@@ -53,18 +60,29 @@ jobs:
       - id: urls
         env:
           MONTHS: ${{ inputs.accounts_months }}
+          MAXIMUM_DOWNLOAD_GB: ${{ inputs.maximum_download_gb }}
         run: |
           set -euo pipefail
           [[ "$MONTHS" =~ ^([1-9]|1[0-2])$ ]]
-          python build/python/202608262245-companies-house-source.py --output work --list-monthly-output monthly.json --latest-monthly-count "$MONTHS"
-          echo "urls=$(cat monthly.json)" >> "$GITHUB_OUTPUT"
+          [[ "$MAXIMUM_DOWNLOAD_GB" =~ ^([1-9]|[1-4][0-9]|50)$ ]]
+          python build/python/202608262245-companies-house-source.py --output work --list-monthly-output monthly.json --list-basic-output basic.json --latest-monthly-count "$MONTHS"
+          python build/python/202608270548-plan-companies-house-downloads.py --accounts-urls monthly.json --basic-urls basic.json --maximum-total-bytes "$((MAXIMUM_DOWNLOAD_GB * 1000 * 1000 * 1000))" --output download-plan.json
+          echo "archives=$(jq -c '[.files[] | select(.kind == "accounts") | {url,bytes}]' download-plan.json)" >> "$GITHUB_OUTPUT"
+          echo "basic_url=$(jq -r '.files[] | select(.kind == "basic") | .url' download-plan.json)" >> "$GITHUB_OUTPUT"
+          echo "basic_bytes=$(jq -r '.files[] | select(.kind == "basic") | .bytes' download-plan.json)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: companies-house-download-plan-${{ steps.stamp.outputs.stamp }}
+          path: download-plan.json
+          if-no-files-found: error
+          retention-days: 14
   accounts-month:
     needs: discover
     strategy:
       fail-fast: false
       max-parallel: 3
       matrix:
-        url: ${{ fromJson(needs.discover.outputs.urls) }}
+        archive: ${{ fromJson(needs.discover.outputs.archives) }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
     permissions:
@@ -76,7 +94,7 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install requests==2.32.3 lxml==5.3.0
       - name: Download one official month
-        run: python build/python/202608262245-companies-house-source.py --output work/source --skip-basic --accounts-url "${{ matrix.url }}"
+        run: python build/python/202608262245-companies-house-source.py --output work/source --skip-basic --accounts-url "${{ matrix.archive.url }}" --expected-bytes "${{ matrix.archive.bytes }}"
       - name: Stream selected XBRL facts
         run: python build/python/202608262245-extract-accounts.py --input work/source/raw --output work/accounts-month.ndjson
       - run: test -s work/accounts-month.ndjson
@@ -112,7 +130,7 @@ jobs:
       - name: Merge newest annual fact per company
         run: python build/python/202608262245-merge-accounts.py --input work/months --output work/accounts-latest.ndjson
       - name: Download current company snapshot once
-        run: python build/python/202608262245-companies-house-source.py --output work/basic
+        run: python build/python/202608262245-companies-house-source.py --output work/basic --basic-url "${{ needs.discover.outputs.basic_url }}" --expected-bytes "${{ needs.discover.outputs.basic_bytes }}"
       - name: Compile stable annual cartridges
         env:
           BUILD_STAMP: ${{ needs.discover.outputs.stamp }}
