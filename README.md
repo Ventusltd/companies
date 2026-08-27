@@ -1,12 +1,18 @@
 # Companies
 
-Annual Companies House public-data processing for Deploy Net Zero.
+Bootstrap and quarterly Companies House public-data processing for Deploy Net Zero.
 
-The repository contains reviewed acquisition, accounts-extraction and cartridge-compilation code. It publishes a stable `data/current/` dataset that is overwritten by each successful annual refresh; Git history provides recovery and chronology.
+The repository contains reviewed acquisition, accounts-extraction and cartridge-compilation code. It publishes a stable `data/current/` dataset that is overwritten by each successful verified refresh; Git history provides recovery and chronology.
 
 ## Annual workflow
 
 [Run Annual Companies House Refresh](https://github.com/Ventusltd/companies/actions/workflows/annual-companies-house-refresh.yml)
+
+Safe non-publishing checkpoints:
+
+- [Validate Companies House Compiler](https://github.com/Ventusltd/companies/actions/workflows/validate-companies-house-compiler.yml)
+- [Plan Companies House Refresh](https://github.com/Ventusltd/companies/actions/workflows/plan-companies-house-refresh.yml)
+- [Recovery and progress checkpoint](PROGRESS.md)
 
 The owner triggers one annual run. It processes the latest rolling electronic-accounts year, then overwrites these compact current views:
 
@@ -17,6 +23,16 @@ The owner triggers one annual run. It processes the latest rolling electronic-ac
 - behind-the-meter opportunity candidates.
 
 The workflow does not continuously poll Companies House and does not commit raw archives.
+
+The annual run is the mandatory bootstrap. It also writes `retained-companies-v1.json`, a compact, hash-bound state containing only qualifying public company records. After that bootstrap has passed, [Quarterly Companies House Refresh](https://github.com/Ventusltd/companies/actions/workflows/quarterly-companies-house-refresh.yml) processes only the newest three electronic-accounts months and the current basic-company snapshot. It combines new facts with the retained state, re-evaluates every retained company against current REPD and NEWS inputs, and rebuilds all cartridges. The quarterly workflow fails before downloading anything if verified retained state is absent.
+
+Before any bulk download starts, a deterministic fixture proves the £10 million threshold, industrial and behind-the-meter tags, exact and previous-name REPD matches, classification boundary, and privacy exclusions.
+
+The discovery job also freezes the exact official accounts and basic-company ZIP URLs, probes their compressed byte sizes, and publishes a download plan. A run fails before any bulk transfer if a URL leaves the official Companies House host, lacks a plausible `Content-Length`, changes through an off-host redirect, is duplicated, or the full closure exceeds the owner-declared budget (40 GB by default). Each download must then match its preflight byte count before extraction.
+
+REPD candidates carry their GlobalGrid project ID and an exact Atlas V8 coordinate deep link. Canonical `PRIMARY_MATCH` PipelineNews items may annotate an already-established REPD candidate, but NEWS can never create or upgrade company identity. Each manifest pins the accounts, REPD closure and NEWS input hashes.
+
+Before publication, `build/python/202608270444-verify-companies-house-output.py` independently recomputes every cartridge hash and count, checks company-number and cross-cartridge consistency, re-proves the £10 million, SPV, BTM, REPD, Atlas and NEWS gates, and recursively rejects prohibited personal or scoring fields.
 
 ## Boundaries
 

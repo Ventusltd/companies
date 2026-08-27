@@ -1,0 +1,46 @@
+name: Plan Companies House Refresh
+
+on:
+  workflow_dispatch:
+    inputs:
+      accounts_months:
+        description: Official monthly accounts archives to include
+        required: true
+        default: "3"
+        type: string
+      maximum_download_gb:
+        description: Fail if the planned compressed closure exceeds this many GB
+        required: true
+        default: "12"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  plan-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install requests==2.32.3
+      - name: Discover and size official archives without downloading them
+        env:
+          MONTHS: ${{ inputs.accounts_months }}
+          MAXIMUM_DOWNLOAD_GB: ${{ inputs.maximum_download_gb }}
+        run: |
+          set -euo pipefail
+          [[ "$MONTHS" =~ ^([1-9]|1[0-2])$ ]]
+          [[ "$MAXIMUM_DOWNLOAD_GB" =~ ^([1-9]|[1-4][0-9]|50)$ ]]
+          python build/python/202608262245-companies-house-source.py --output work --list-monthly-output monthly.json --list-basic-output basic.json --latest-monthly-count "$MONTHS"
+          python build/python/202608270548-plan-companies-house-downloads.py --accounts-urls monthly.json --basic-urls basic.json --maximum-total-bytes "$((MAXIMUM_DOWNLOAD_GB * 1000 * 1000 * 1000))" --output download-plan.json
+          jq '{schema,file_count,total_bytes,maximum_total_bytes,files:[.files[]|{kind,filename,bytes,last_modified,etag}]}' download-plan.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: companies-house-plan-${{ github.run_id }}
+          path: download-plan.json
+          if-no-files-found: error
+          retention-days: 14
