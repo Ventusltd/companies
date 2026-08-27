@@ -127,6 +127,7 @@ jobs:
           set -euo pipefail
           ! grep -RinE '"(director_name|date_of_birth|residential_address|individual_psc)"[[:space:]]*:' work/current
           test -s work/current/manifest-v1.json
+          python build/python/202608270444-verify-companies-house-output.py --input work/current --report work/current/verification-v1.json
       - uses: actions/upload-artifact@v4
         with:
           name: annual-companies-house-current-${{ needs.discover.outputs.stamp }}
