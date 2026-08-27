@@ -50,11 +50,18 @@ def verify(root: Path) -> dict:
         return {"schema": "companies-house-verification-v1", "status": "FAIL", "errors": ["manifest-v1.json missing"]}
     manifest = json.loads(manifest_path.read_text())
     if manifest.get("schema") != "companies-house-manifest-v1": errors.append("manifest schema")
+    refresh_policy = manifest.get("refresh_policy")
+    if refresh_policy not in {"annual-bootstrap", "quarterly-incremental"}: errors.append("refresh_policy")
     if manifest.get("threshold_gbp") != 10_000_000: errors.append("threshold_gbp")
     if manifest.get("financial_currency") != "GBP": errors.append("financial_currency")
     inputs = manifest.get("inputs", {})
     for label, value in (("accounts_sha256", inputs.get("accounts_sha256")), ("news_sha256", inputs.get("news_sha256")), ("repd.sha256", inputs.get("repd", {}).get("sha256"))):
         if not isinstance(value, str) or not SHA256.fullmatch(value): errors.append(label)
+    previous_sha = inputs.get("previous_records_sha256")
+    if refresh_policy == "quarterly-incremental":
+        if not isinstance(previous_sha, str) or not SHA256.fullmatch(previous_sha): errors.append("previous_records_sha256")
+    elif previous_sha is not None:
+        errors.append("annual bootstrap has previous state")
     if "NEWS can never establish" not in inputs.get("identity_rule", "") and "news only annotates" not in inputs.get("identity_rule", ""):
         errors.append("identity_rule")
     files = manifest.get("files")
@@ -113,6 +120,27 @@ def verify(root: Path) -> dict:
             if cartridge == "btm-opportunities":
                 if not record.get("btm_opportunity") or not any(tag.startswith("BTM_") for tag in record.get("btm_tags", [])):
                     errors.append(f"{prefix}: BTM gate")
+    state = manifest.get("state", {})
+    state_relative = state.get("path", "")
+    state_path = root / state_relative if isinstance(state_relative, str) else root / "__invalid__"
+    retained = {}
+    if state_relative != "retained-companies-v1.json" or not state_path.is_file():
+        errors.append("retained state missing")
+    else:
+        if digest(state_path) != state.get("sha256"): errors.append("retained state sha256")
+        payload = json.loads(state_path.read_text())
+        if payload.get("schema") != "companies-house-retained-v1": errors.append("retained state schema")
+        records = payload.get("records")
+        if not isinstance(records, list):
+            errors.append("retained state records")
+        else:
+            if len(records) != state.get("records"): errors.append("retained state count")
+            for index, record in enumerate(records):
+                number = record.get("company_number", "")
+                if not COMPANY_NUMBER.fullmatch(number) or number in retained: errors.append(f"retained[{index}]: company_number")
+                if FORBIDDEN_KEYS.intersection(keys(record)): errors.append(f"retained[{index}]: forbidden")
+                retained[number] = json.dumps(record, sort_keys=True, separators=(",", ":"))
+            if retained != canonical: errors.append("retained state differs from cartridge union")
     privacy = manifest.get("privacy", {})
     if privacy != {"directors": False, "individual_psc": False, "residential_addresses": False}: errors.append("privacy contract")
     return {"schema": "companies-house-verification-v1", "status": "FAIL" if errors else "PASS", "companies": len(canonical), "cartridges": cartridge_counts, "errors": errors[:100]}
