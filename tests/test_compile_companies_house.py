@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import subprocess
 import tempfile
@@ -93,15 +94,42 @@ def main() -> None:
         assert manifest["financial_currency"] == "GBP"
         assert manifest["inputs"]["news_sha256"]
         assert manifest["inputs"]["repd"]["files"] == 1
+        assert manifest["refresh_policy"] == "annual-bootstrap"
+        retained = output / "retained-companies-v1.json"
+        assert retained.is_file()
+        assert manifest["state"]["records"] == 4
         subprocess.run(["python", str(VERIFIER), "--input", str(output), "--report", str(output / "verification-v1.json")], check=True)
         verification = json.loads((output / "verification-v1.json").read_text())
         assert verification["status"] == "PASS"
-        tampered = output / manifest["files"]["repd-linked"]["path"]
+        quarterly = root / "quarterly"
+        quarterly_accounts = root / "quarterly-accounts.ndjson"
+        quarterly_accounts.write_text(json.dumps({
+            "company_number": "22222222", "accounts_date": "2026-06-30",
+            "total_assets": 5_000_000, "net_assets": 4_000_000,
+        }) + "\n")
+        subprocess.run([
+            "python", str(COMPILER), "--raw", str(raw), "--accounts", str(quarterly_accounts),
+            "--repd", str(repd), "--news", str(news), "--previous-records", str(retained),
+            "--refresh-policy", "quarterly-incremental", "--output", str(quarterly), "--stamp", "202611270257",
+        ], check=True)
+        quarterly_manifest = json.loads((quarterly / "manifest-v1.json").read_text())
+        assert quarterly_manifest["refresh_policy"] == "quarterly-incremental"
+        assert quarterly_manifest["inputs"]["previous_records_sha256"] == hashlib.sha256(retained.read_bytes()).hexdigest()
+        subprocess.run(["python", str(VERIFIER), "--input", str(quarterly)], check=True)
+        quarterly_records = json.loads((quarterly / "retained-companies-v1.json").read_text())["records"]
+        assert {row["company_number"] for row in quarterly_records} == {"01234567", "AB123456", "87654321"}
+        missing_state = subprocess.run([
+            "python", str(COMPILER), "--raw", str(raw), "--accounts", str(accounts), "--repd", str(repd),
+            "--output", str(root / "missing-state"), "--stamp", "202611270258", "--refresh-policy", "quarterly-incremental",
+        ], capture_output=True, text=True)
+        assert missing_state.returncode != 0
+        assert "requires --previous-records" in missing_state.stderr
+        tampered = quarterly / quarterly_manifest["files"]["repd-linked"]["path"]
         tampered.write_text(tampered.read_text() + " ")
-        rejected = subprocess.run(["python", str(VERIFIER), "--input", str(output)], capture_output=True, text=True)
+        rejected = subprocess.run(["python", str(VERIFIER), "--input", str(quarterly)], capture_output=True, text=True)
         assert rejected.returncode == 1
         assert "repd-linked: sha256" in rejected.stdout
-        print(json.dumps({"status": "PASS", "selected_companies": len(records), "cartridges": {key: len(value) for key, value in cartridges.items()}}, sort_keys=True))
+        print(json.dumps({"status": "PASS", "bootstrap_companies": len(records), "quarterly_companies": len(quarterly_records), "cartridges": {key: len(value) for key, value in cartridges.items()}}, sort_keys=True))
 
 
 if __name__ == "__main__":
