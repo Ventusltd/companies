@@ -1,0 +1,176 @@
+name: Quarterly Companies House Refresh
+
+on:
+  workflow_dispatch:
+    inputs:
+      maximum_download_gb:
+        description: Fail before download when the three-month compressed closure exceeds this many GB
+        required: true
+        default: "12"
+        type: string
+      pipelinenews_ref:
+        description: Exact frozen PipelineNews commit containing REPD and NEWS inputs
+        required: true
+        default: "77bda8c3809d02550d06a1c4154315f56d1120fb"
+        type: string
+
+concurrency:
+  group: quarterly-companies-house-refresh
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install requests==2.32.3 lxml==5.3.0
+      - name: Require verified bootstrap state
+        run: test -s data/current/retained-companies-v1.json
+      - name: Compile and test sources
+        run: |
+          python -m py_compile build/python/*.py tests/*.py
+          python tests/test_plan_companies_house_downloads.py
+          python tests/test_compile_companies_house.py
+  discover:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      archives: ${{ steps.urls.outputs.archives }}
+      basic_url: ${{ steps.urls.outputs.basic_url }}
+      basic_bytes: ${{ steps.urls.outputs.basic_bytes }}
+      stamp: ${{ steps.stamp.outputs.stamp }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install requests==2.32.3
+      - id: stamp
+        run: echo "stamp=$(date -u +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
+      - id: urls
+        env:
+          MAXIMUM_DOWNLOAD_GB: ${{ inputs.maximum_download_gb }}
+        run: |
+          set -euo pipefail
+          [[ "$MAXIMUM_DOWNLOAD_GB" =~ ^([1-9]|1[0-9]|20)$ ]]
+          python build/python/202608262245-companies-house-source.py --output work --list-monthly-output monthly.json --list-basic-output basic.json --latest-monthly-count 3
+          python build/python/202608270548-plan-companies-house-downloads.py --accounts-urls monthly.json --basic-urls basic.json --maximum-total-bytes "$((MAXIMUM_DOWNLOAD_GB * 1000 * 1000 * 1000))" --output download-plan.json
+          echo "archives=$(jq -c '[.files[] | select(.kind == "accounts") | {url,bytes}]' download-plan.json)" >> "$GITHUB_OUTPUT"
+          echo "basic_url=$(jq -r '.files[] | select(.kind == "basic") | .url' download-plan.json)" >> "$GITHUB_OUTPUT"
+          echo "basic_bytes=$(jq -r '.files[] | select(.kind == "basic") | .bytes' download-plan.json)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quarterly-download-plan-${{ steps.stamp.outputs.stamp }}
+          path: download-plan.json
+          if-no-files-found: error
+          retention-days: 14
+  accounts-month:
+    needs: discover
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        archive: ${{ fromJson(needs.discover.outputs.archives) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install requests==2.32.3 lxml==5.3.0
+      - name: Download one planned official month
+        run: python build/python/202608262245-companies-house-source.py --output work/source --skip-basic --accounts-url "${{ matrix.archive.url }}" --expected-bytes "${{ matrix.archive.bytes }}"
+      - name: Stream selected XBRL facts
+        run: python build/python/202608262245-extract-accounts.py --input work/source/raw --output work/accounts-month.ndjson
+      - run: test -s work/accounts-month.ndjson
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quarterly-accounts-${{ strategy.job-index }}
+          path: |
+            work/accounts-month.ndjson
+            work/source/source-manifest.json
+          if-no-files-found: error
+          retention-days: 3
+  compose:
+    needs: [discover, accounts-month]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Ventusltd/pipelinenews
+          ref: ${{ inputs.pipelinenews_ref }}
+          path: repd-source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install requests==2.32.3 lxml==5.3.0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: quarterly-accounts-*
+          path: work/months
+      - name: Merge newest quarterly fact per company
+        run: python build/python/202608262245-merge-accounts.py --input work/months --output work/accounts-latest.ndjson
+      - name: Download the planned current company snapshot
+        run: python build/python/202608262245-companies-house-source.py --output work/basic --basic-url "${{ needs.discover.outputs.basic_url }}" --expected-bytes "${{ needs.discover.outputs.basic_bytes }}"
+      - name: Rebuild cartridges from retained state and quarterly facts
+        env:
+          BUILD_STAMP: ${{ needs.discover.outputs.stamp }}
+        run: python build/python/202608262245-compile-companies-house.py --raw work/basic/raw --accounts work/accounts-latest.ndjson --repd repd-source/data/projects --news repd-source/data/news/202608261927-major-project-news-v9-5-1.json --previous-records data/current/retained-companies-v1.json --refresh-policy quarterly-incremental --output work/current --stamp "$BUILD_STAMP"
+      - name: Consolidate source receipts
+        run: |
+          set -euo pipefail
+          find work/months -name source-manifest.json -print0 | sort -z | xargs -0 jq -s '{schema:"companies-house-quarterly-accounts-sources-v1", accounts_files:[.[].accounts_files[]]}' > work/current/accounts-source-manifest-v1.json
+          cp work/basic/source-manifest.json work/current/company-source-manifest-v1.json
+      - name: Privacy, identity and retained-state gates
+        run: |
+          set -euo pipefail
+          ! grep -RinE '"(director_name|date_of_birth|residential_address|individual_psc)"[[:space:]]*:' work/current
+          python build/python/202608270444-verify-companies-house-output.py --input work/current --report work/current/verification-v1.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quarterly-companies-house-current-${{ needs.discover.outputs.stamp }}
+          path: work/current/
+          if-no-files-found: error
+          retention-days: 14
+  overwrite-current:
+    needs: [discover, compose]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: quarterly-companies-house-current-*
+          path: staged
+          merge-multiple: true
+      - name: Overwrite verified stable current records
+        run: |
+          set -euo pipefail
+          mkdir -p data/current
+          cp staged/*.json data/current/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/current
+          git diff --cached --quiet && exit 0
+          git commit -m "data: quarterly Companies House refresh ${{ needs.discover.outputs.stamp }}"
+          git pull --rebase origin main
+          git push origin HEAD:main
