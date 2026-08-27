@@ -11,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPILER = ROOT / "build/python/202608262245-compile-companies-house.py"
+VERIFIER = ROOT / "build/python/202608270444-verify-companies-house-output.py"
 
 
 def write_fixture(root: Path) -> tuple[Path, Path, Path, Path, Path]:
@@ -92,6 +93,14 @@ def main() -> None:
         assert manifest["financial_currency"] == "GBP"
         assert manifest["inputs"]["news_sha256"]
         assert manifest["inputs"]["repd"]["files"] == 1
+        subprocess.run(["python", str(VERIFIER), "--input", str(output), "--report", str(output / "verification-v1.json")], check=True)
+        verification = json.loads((output / "verification-v1.json").read_text())
+        assert verification["status"] == "PASS"
+        tampered = output / manifest["files"]["repd-linked"]["path"]
+        tampered.write_text(tampered.read_text() + " ")
+        rejected = subprocess.run(["python", str(VERIFIER), "--input", str(output)], capture_output=True, text=True)
+        assert rejected.returncode == 1
+        assert "repd-linked: sha256" in rejected.stdout
         print(json.dumps({"status": "PASS", "selected_companies": len(records), "cartridges": {key: len(value) for key, value in cartridges.items()}}, sort_keys=True))
 
 
