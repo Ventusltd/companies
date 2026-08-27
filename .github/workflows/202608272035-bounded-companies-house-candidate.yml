@@ -1,0 +1,350 @@
+name: 202608272035 Bounded Companies House Candidate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/202608272035-bounded-companies-house-candidate.yml
+      - build/python/202608272035-freeze-companies-house-plan.py
+      - build/python/202608272035-download-planned-archive.py
+      - build/python/202608272035-extract-bounded-accounts.py
+      - build/python/202608272035-verify-companies-house-candidate.py
+      - tests/test_202608272035_company_identity_and_grains.py
+      - manifests/202608272035-bounded-companies-house-candidate.json
+
+concurrency:
+  group: companies-house-candidate-202608272035
+  cancel-in-progress: false
+
+env:
+  GENERATION: "202608272035"
+  BASE_COMMIT: "1f91f8efced903aa82e62acf56b9af2db476cfdb"
+  PIPELINENEWS_COMMIT: "35f35ada161223fb3ee19e525664ee7f17df1ddd"
+  FIXED_GENERATED_AT: "2026-08-27T19:35:00Z"
+  SOURCE_MANIFEST: manifests/202608272035-bounded-companies-house-candidate.json
+
+jobs:
+  source-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      source_sha: ${{ steps.boundary.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - id: boundary
+        name: Prove the exact direct-parent push-main source closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_EVENT_NAME" = push
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 2
+          test "$(git rev-parse HEAD^)" = "$BASE_COMMIT"
+          git diff --name-only "$BASE_COMMIT" HEAD | sort > /tmp/actual-files
+          jq -r '.source_files[].path' "$SOURCE_MANIFEST" | sort > /tmp/expected-files
+          diff -u /tmp/expected-files /tmp/actual-files
+          test "$(wc -l < /tmp/actual-files)" -eq 7
+          while IFS=$'\t' read -r expected path; do
+            if [ "$expected" = SELF ]; then
+              test "$path" = "$SOURCE_MANIFEST"
+            else
+              test "$(sha256sum "$path" | cut -d' ' -f1)" = "$expected"
+            fi
+          done < <(jq -r '[.source_files[],.dependencies[]] | .[] | [.sha256,.path] | @tsv' "$SOURCE_MANIFEST")
+          test "$(jq -r '.generation' "$SOURCE_MANIFEST")" = "$GENERATION"
+          test "$(jq -r '.base_commit' "$SOURCE_MANIFEST")" = "$BASE_COMMIT"
+          test "$(jq -r '.deployment_state' "$SOURCE_MANIFEST")" = not-authorised
+          test "$(jq -r '.usage_context' "$SOURCE_MANIFEST")" = NON_COMMERCIAL_OPEN_SOURCE
+          test "$(jq -r '.source_rights_are_distinct_from_usage_context' "$SOURCE_MANIFEST")" = true
+          test "$(jq -r '.runtime_sources.repd.commit' "$SOURCE_MANIFEST")" = "$PIPELINENEWS_COMMIT"
+          test "$(jq -r '.publication.promotion_eligible' "$SOURCE_MANIFEST")" = false
+          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  validate:
+    needs: source-boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ needs.source-boundary.outputs.source_sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Install the pinned analytical verifier
+        run: python -m pip install --disable-pip-version-check --no-cache-dir duckdb==1.3.2
+      - name: Compile the exact source closure
+        run: python -m py_compile build/python/202608272035-*.py tests/test_202608272035_company_identity_and_grains.py
+      - name: Run inherited and successor contracts
+        run: |
+          python tests/test_202608271507_bounded_companies_house.py
+          python tests/test_202608272016_document_ceiling.py
+          python tests/test_202608272035_company_identity_and_grains.py
+
+  plan:
+    needs: [source-boundary, validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      accounts: ${{ steps.matrix.outputs.accounts }}
+      basic_index: ${{ steps.matrix.outputs.basic_index }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ needs.source-boundary.outputs.source_sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Re-probe the four source-pinned official archives
+        run: |
+          python build/python/202608272035-freeze-companies-house-plan.py \
+            --output work/plan.json \
+            --rest-evidence work/rest-evidence.json
+      - id: matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "accounts=$(jq -c '[.files | to_entries[] | select(.value.kind == "accounts") | {index:.key,filename:.value.filename}]' work/plan.json)" >> "$GITHUB_OUTPUT"
+          echo "basic_index=$(jq -r '.files | to_entries[] | select(.value.kind == "basic") | .key' work/plan.json)" >> "$GITHUB_OUTPUT"
+          test "$(jq '[.files[] | select(.kind == "accounts")] | length' work/plan.json)" -eq 3
+          test "$(jq '[.files[] | select(.kind == "basic")] | length' work/plan.json)" -eq 1
+          test "$(jq -r '.total_bytes' work/plan.json)" -eq 7046921879
+          test "$(jq -r '.planned_at' work/plan.json)" = "$FIXED_GENERATED_AT"
+          test "$(sha256sum work/plan.json | cut -d' ' -f1)" = 1f12a49779d5408ee2aa14b89ff5925b4fd7a83d1a1b6445fac539d8017202c7
+          test "$(sha256sum work/rest-evidence.json | cut -d' ' -f1)" = 7342dae046cbd6e1ad4b5b50f9c0f1ebadb5e16575c4aaa15a91833e9bbee2b2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: companies-plan-202608272035-${{ github.run_id }}
+          path: |
+            work/plan.json
+            work/rest-evidence.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  accounts-month:
+    needs: [source-boundary, plan]
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        archive: ${{ fromJson(needs.plan.outputs.accounts) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ needs.source-boundary.outputs.source_sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: companies-plan-202608272035-${{ github.run_id }}
+          path: work
+      - name: Redownload one exact planned archive
+        run: |
+          python build/python/202608272035-download-planned-archive.py \
+            --plan work/plan.json \
+            --index "${{ matrix.archive.index }}" \
+            --output work/raw \
+            --receipt "work/receipt-${{ matrix.archive.index }}.json"
+      - name: Re-extract twice with the full company-number domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$(find work/raw -maxdepth 1 -type f -name '*.zip' -print -quit)"
+          test -n "$archive"
+          python build/python/202608272035-extract-bounded-accounts.py --input "$archive" --output "work/accounts-${{ matrix.archive.index }}-a.ndjson" --report "work/extraction-${{ matrix.archive.index }}-a.json"
+          python build/python/202608272035-extract-bounded-accounts.py --input "$archive" --output "work/accounts-${{ matrix.archive.index }}-b.ndjson" --report "work/extraction-${{ matrix.archive.index }}-b.json"
+          cmp "work/accounts-${{ matrix.archive.index }}-a.ndjson" "work/accounts-${{ matrix.archive.index }}-b.ndjson"
+          cmp "work/extraction-${{ matrix.archive.index }}-a.json" "work/extraction-${{ matrix.archive.index }}-b.json"
+          mv "work/accounts-${{ matrix.archive.index }}-a.ndjson" "work/accounts-${{ matrix.archive.index }}.ndjson"
+          mv "work/extraction-${{ matrix.archive.index }}-a.json" "work/extraction-${{ matrix.archive.index }}.json"
+          rm -f "work/accounts-${{ matrix.archive.index }}-b.ndjson" "work/extraction-${{ matrix.archive.index }}-b.json"
+      - name: Exclude raw archives from transport
+        run: |
+          test "$(find work/raw -type f -name '*.zip' | wc -l)" -eq 1
+          find work/raw -type f -name '*.zip' -delete
+          test "$(find work/raw -type f | wc -l)" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: accounts-202608272035-${{ github.run_id }}-${{ matrix.archive.index }}
+          path: |
+            work/accounts-${{ matrix.archive.index }}.ndjson
+            work/receipt-${{ matrix.archive.index }}.json
+            work/extraction-${{ matrix.archive.index }}.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  compose:
+    needs: [source-boundary, plan, accounts-month]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ needs.source-boundary.outputs.source_sha }}
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: Ventusltd/pipelinenews
+          ref: ${{ env.PIPELINENEWS_COMMIT }}
+          path: work/repd-source
+          sparse-checkout: |
+            /data/projects/
+            /data/manifests/202608261927-build-manifest-v9-1.json
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Prove the read-only REPD runtime source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C work/repd-source rev-parse HEAD)" = "$PIPELINENEWS_COMMIT"
+          test "$(sha256sum work/repd-source/data/manifests/202608261927-build-manifest-v9-1.json | cut -d' ' -f1)" = 67976a1bbcaf383ed7121b13060db3b864db9ce33dfc721a88b59c8ca8b8e06c
+          test "$(jq -r '.source_dataset' work/repd-source/data/manifests/202608261927-build-manifest-v9-1.json)" = "DESNZ Renewable Energy Planning Database Q2 2026"
+          {
+            printf '%s\n' data/manifests/202608261927-build-manifest-v9-1.json
+            for index in {01..16}; do
+              printf 'data/projects/202608261927-project-partition-v9-1-%s.json\n' "$index"
+            done
+          } | sort > /tmp/expected-repd-files
+          find work/repd-source -path 'work/repd-source/.git' -prune -o -type f -printf '%P\n' | sort > /tmp/actual-repd-files
+          diff -u /tmp/expected-repd-files /tmp/actual-repd-files
+          test -z "$(git -C work/repd-source status --short)"
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Install the pinned Parquet and DuckDB engine
+        run: python -m pip install --disable-pip-version-check --no-cache-dir duckdb==1.3.2
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: companies-plan-202608272035-${{ github.run_id }}
+          path: work/plan
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: accounts-202608272035-${{ github.run_id }}-*
+          path: work/months
+          merge-multiple: true
+      - name: Merge the fixed re-extraction once
+        run: python build/python/202608262245-merge-accounts.py --input work/months --output work/accounts-latest.ndjson
+      - name: Redownload and validate the exact basic snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          python build/python/202608272035-download-planned-archive.py --plan work/plan/plan.json --index "${{ needs.plan.outputs.basic_index }}" --output work/basic/raw --receipt "work/months/receipt-${{ needs.plan.outputs.basic_index }}.json"
+          archive="$(find work/basic/raw -maxdepth 1 -type f -name '*.zip' -print -quit)"
+          test -n "$archive"
+          python build/python/202608272035-extract-bounded-accounts.py --kind basic --input "$archive" --report work/months/basic-validation.json
+      - name: Compile twice from the identical frozen closure
+        run: |
+          python build/python/202608262245-compile-companies-house.py --raw work/basic/raw --accounts work/accounts-latest.ndjson --repd work/repd-source/data/projects --output work/raw-a --stamp "$GENERATION"
+          python build/python/202608262245-compile-companies-house.py --raw work/basic/raw --accounts work/accounts-latest.ndjson --repd work/repd-source/data/projects --output work/raw-b --stamp "$GENERATION"
+      - name: Seal two deterministic two-grain candidates
+        run: |
+          python build/python/202608272035-verify-companies-house-candidate.py --seal --input work/raw-a --output work/candidate-a --plan work/plan/plan.json --receipts work/months --reports work/months --repd work/repd-source/data/projects --basic work/basic/raw --accounts work/accounts-latest.ndjson --rest-evidence work/plan/rest-evidence.json --basic-report work/months/basic-validation.json --source-commit "${{ needs.source-boundary.outputs.source_sha }}"
+          python build/python/202608272035-verify-companies-house-candidate.py --seal --input work/raw-b --output work/candidate-b --plan work/plan/plan.json --receipts work/months --reports work/months --repd work/repd-source/data/projects --basic work/basic/raw --accounts work/accounts-latest.ndjson --rest-evidence work/plan/rest-evidence.json --basic-report work/months/basic-validation.json --source-commit "${{ needs.source-boundary.outputs.source_sha }}"
+          diff -qr work/candidate-a work/candidate-b
+      - name: Independently read back both actual landed grains
+        run: |
+          python build/python/202608272035-verify-companies-house-candidate.py --verify --input work/candidate-a --report work/verification-v1.json
+          test "$(jq -r '.inputs.generation_source_commit' work/candidate-a/manifest-v1.json)" = "${{ needs.source-boundary.outputs.source_sha }}"
+          test "$(jq -r '.deployment_state' work/candidate-a/manifest-v1.json)" = not-authorised
+          test "$(jq -r '.promotion_eligible' work/candidate-a/manifest-v1.json)" = false
+          test "$(jq -r '.usage_context' work/candidate-a/manifest-v1.json)" = NON_COMMERCIAL_OPEN_SOURCE
+          test "$(jq -r '.source_rights_are_distinct_from_usage_context' work/candidate-a/manifest-v1.json)" = true
+          test "$(jq -r '.source_licences.repd.licence.name' work/candidate-a/manifest-v1.json)" = "Open Government Licence v3.0"
+          test "$(jq -r '.data_discipline.foreign_repository_files_committed' work/candidate-a/manifest-v1.json)" = false
+          test "$(jq -r '.data_discipline.foreign_data_materialised' work/candidate-a/manifest-v1.json)" = true
+          test "$(jq -r '.analytical_dataset.compression_codecs == ["ZSTD"]' work/candidate-a/manifest-v1.json)" = true
+          test "$(jq -r '.analytical_dataset.rows == .analytical_dataset.distinct_keys' work/candidate-a/manifest-v1.json)" = true
+          test "$(jq -r '.analytical_dataset.null_keys + .analytical_dataset.duplicate_key_groups + .analytical_dataset.typed_column_mismatches' work/candidate-a/manifest-v1.json)" -eq 0
+          test "$(jq -r '.relationship_dataset.compression_codecs == ["ZSTD"]' work/candidate-a/manifest-v1.json)" = true
+          test "$(jq -r '.relationship_dataset.rows == .relationship_dataset.distinct_keys' work/candidate-a/manifest-v1.json)" = true
+          test "$(jq -r '.relationship_dataset.null_keys + .relationship_dataset.duplicate_key_groups + .relationship_dataset.typed_column_mismatches' work/candidate-a/manifest-v1.json)" -eq 0
+          test "$(jq -c '.relationship_dataset.declared_key' work/candidate-a/manifest-v1.json)" = '["company_number","repd_ref","match_type"]'
+          test ! -e data/current
+      - name: Remove every raw archive before artifact publication
+        run: |
+          find work -type f -name '*.zip' -delete
+          test "$(find work -type f -name '*.zip' | wc -l)" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: companies-candidate-202608272035-${{ github.run_id }}
+          path: |
+            work/candidate-a/
+            work/verification-v1.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  publish-candidate-branch:
+    needs: [source-boundary, compose]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ needs.source-boundary.outputs.source_sha }}
+          fetch-depth: 1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: companies-candidate-202608272035-${{ github.run_id }}
+          path: staged
+      - name: Atomically create or verify the immutable candidate branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ needs.source-boundary.outputs.source_sha }}"
+          test ! -e data/current
+          mkdir -p "data/candidates/$GENERATION"
+          cp -R staged/candidate-a/. "data/candidates/$GENERATION/"
+          git add "data/candidates/$GENERATION"
+          test -n "$(git diff --cached --name-only)"
+          while IFS= read -r path; do
+            case "$path" in
+              data/candidates/202608272035/*) ;;
+              *) echo "Candidate commit escaped its immutable path: $path" >&2; exit 1 ;;
+            esac
+          done < <(git diff --cached --name-only)
+          if git diff --cached --name-only | grep -Eq '(^|/)current/|pages|releases'; then
+            echo "Candidate commit attempted a stable or deployment mutation" >&2
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          GIT_AUTHOR_DATE="$FIXED_GENERATED_AT" GIT_COMMITTER_DATE="$FIXED_GENERATED_AT" \
+            git commit -m "data: quarantine Companies candidate $GENERATION"
+          candidate_commit="$(git rev-parse HEAD)"
+          candidate_ref="refs/heads/candidate/$GENERATION"
+          if git push --force-with-lease="$candidate_ref:" origin "HEAD:$candidate_ref"; then
+            exit 0
+          fi
+          git fetch --no-tags origin "$candidate_ref"
+          if [ "$(git rev-parse FETCH_HEAD)" = "$candidate_commit" ]; then
+            echo "Exact immutable candidate commit already exists"
+            exit 0
+          fi
+          echo "Immutable candidate branch collision" >&2
+          exit 1

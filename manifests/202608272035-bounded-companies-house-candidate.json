@@ -1,0 +1,298 @@
+{
+  "schema": "companies-house-bounded-candidate-source-v2",
+  "generation": "202608272035",
+  "parent_generation": "202608272016",
+  "base_commit": "1f91f8efced903aa82e62acf56b9af2db476cfdb",
+  "deployment_state": "not-authorised",
+  "purpose": "Reacquire and re-extract the exact bounded official Companies House closure with the complete eight-alphanumeric company-number domain, then land and read back separate company and REPD-candidate relationship grains without conflating application usage with source rights.",
+  "successor_fixes": [
+    "The accounts extractor and the sealer both accept exactly eight uppercase alphanumeric company-number characters.",
+    "REPD candidate relationships are materialised at their own composite grain instead of being audited only as nested company JSON.",
+    "The triggering source is an exact direct child of the pinned main commit and candidate ref creation is an atomic absent-ref compare-and-swap.",
+    "The four official archive identities and validators are source-pinned and retained acquisition timestamps are generation-fixed for retry convergence.",
+    "Materialised REPD fields have explicit source, rights, attribution, runtime lineage and an accurate foreign-data declaration."
+  ],
+  "source_files": [
+    {
+      "path": ".github/workflows/202608272035-bounded-companies-house-candidate.yml",
+      "sha256": "919d34a715546d28b17ff3054e039929a7a35e45f426211c22ab17609e0bab16"
+    },
+    {
+      "path": "build/python/202608272035-freeze-companies-house-plan.py",
+      "sha256": "4eb7c42564adeacfa58d0b67c01f040da40aebed14acd2b7b5eb806e806318be"
+    },
+    {
+      "path": "build/python/202608272035-download-planned-archive.py",
+      "sha256": "3b89c6bd62da809f8347f245fd3aef30fa5ae2a2740b5319a7ddca3fa60b7849"
+    },
+    {
+      "path": "build/python/202608272035-extract-bounded-accounts.py",
+      "sha256": "1173a23ef2634bc4795451dcdc20ec481d388f75775fd2f14b2798b7d4065780"
+    },
+    {
+      "path": "build/python/202608272035-verify-companies-house-candidate.py",
+      "sha256": "5c3a3af787520bdb7936005d7247fb6060f36fae981f78c587ff35d6a55343db"
+    },
+    {
+      "path": "tests/test_202608272035_company_identity_and_grains.py",
+      "sha256": "9e913f48eb7954a99def5c85f2220b55a4eeb75794d949c8743c60cb3bbeaa8f"
+    },
+    {
+      "path": "manifests/202608272035-bounded-companies-house-candidate.json",
+      "sha256": "SELF"
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "build/python/202608271507-freeze-companies-house-plan.py",
+      "sha256": "b43064ef8784a802327326882b49ca1c51ad6dfff8e5db90ee274824960d75c2"
+    },
+    {
+      "path": "build/python/202608271507-download-planned-archive.py",
+      "sha256": "747eca36b6c090f1b241632c5fb338c427f6ca570fa2e20da7c2e19056e92486"
+    },
+    {
+      "path": "build/python/202608271507-extract-bounded-accounts.py",
+      "sha256": "6a5e5da4f3b9c976689488fb99227d5992380fb9375dd090678ea8bfa1018135"
+    },
+    {
+      "path": "build/python/202608271507-verify-companies-house-candidate.py",
+      "sha256": "22e8393dc55606e3f24381ed0fad0bf0ae545c51127a7a68c90f65e3a8558f02"
+    },
+    {
+      "path": "build/python/202608272016-verify-companies-house-candidate.py",
+      "sha256": "b37c634d3369c8110712aaf36cffb5df303d4f93eb64b79bae224bdc69441033"
+    },
+    {
+      "path": "build/python/202608262245-compile-companies-house.py",
+      "sha256": "f7e5ebfb6ddc885b3b2a05deeedff5bf4b4f808b78ef62974baa7025487dcc90"
+    },
+    {
+      "path": "build/python/202608262245-merge-accounts.py",
+      "sha256": "d6ff055510c9b42a1710d6f4cdd22288d7334d20e3ee4190be13ff5c219c2e2e"
+    },
+    {
+      "path": "tests/test_202608271507_bounded_companies_house.py",
+      "sha256": "08980228b06f00ca89ce0b780dbd49ca1d68867c8dd29dfa7f4fb8e4fa0da131"
+    },
+    {
+      "path": "tests/test_202608272016_document_ceiling.py",
+      "sha256": "fd4819037c6cbf0df534299307ca91793aaaa46ac8ac0e335ab56c6f41b518ae"
+    }
+  ],
+  "fixed_archive_plan": {
+    "planned_at": "2026-08-27T19:35:00Z",
+    "plan_json_sha256": "1f12a49779d5408ee2aa14b89ff5925b4fd7a83d1a1b6445fac539d8017202c7",
+    "rest_non_use_evidence_sha256": "7342dae046cbd6e1ad4b5b50f9c0f1ebadb5e16575c4aaa15a91833e9bbee2b2",
+    "official_host": "download.companieshouse.gov.uk",
+    "total_bytes": 7046921879,
+    "maximum_archive_bytes": 4000000000,
+    "maximum_total_bytes": 12000000000,
+    "files": [
+      {
+        "kind": "accounts",
+        "url": "https://download.companieshouse.gov.uk/Accounts_Monthly_Data-May2026.zip",
+        "resolved_url": "https://download.companieshouse.gov.uk/Accounts_Monthly_Data-May2026.zip",
+        "filename": "Accounts_Monthly_Data-May2026.zip",
+        "bytes": 1975424256,
+        "etag": "\"5c27d3b897a72e43c915cf5b5d167e77-236\"",
+        "last_modified": "Sat, 04 Jul 2026 09:00:07 GMT"
+      },
+      {
+        "kind": "accounts",
+        "url": "https://download.companieshouse.gov.uk/Accounts_Monthly_Data-June2026.zip",
+        "resolved_url": "https://download.companieshouse.gov.uk/Accounts_Monthly_Data-June2026.zip",
+        "filename": "Accounts_Monthly_Data-June2026.zip",
+        "bytes": 2348684884,
+        "etag": "\"b86d234bcb747225b02d8bae3bc93491-280\"",
+        "last_modified": "Sat, 01 Aug 2026 09:00:12 GMT"
+      },
+      {
+        "kind": "accounts",
+        "url": "https://download.companieshouse.gov.uk/Accounts_Monthly_Data-July2026.zip",
+        "resolved_url": "https://download.companieshouse.gov.uk/Accounts_Monthly_Data-July2026.zip",
+        "filename": "Accounts_Monthly_Data-July2026.zip",
+        "bytes": 2229763708,
+        "etag": "\"2dcaa897d193afbcf0f15be83d3a0a65-266\"",
+        "last_modified": "Mon, 10 Aug 2026 09:00:13 GMT"
+      },
+      {
+        "kind": "basic",
+        "url": "https://download.companieshouse.gov.uk/BasicCompanyDataAsOneFile-2026-08-01.zip",
+        "resolved_url": "https://download.companieshouse.gov.uk/BasicCompanyDataAsOneFile-2026-08-01.zip",
+        "filename": "BasicCompanyDataAsOneFile-2026-08-01.zip",
+        "bytes": 493049031,
+        "etag": "\"b684020145defd5a3373b3d2c56c3b87-59\"",
+        "last_modified": "Fri, 07 Aug 2026 08:10:19 GMT"
+      }
+    ]
+  },
+  "runtime_sources": {
+    "companies_house": {
+      "mode": "bounded HTTPS redownload of exact source-pinned bulk objects",
+      "official_host": "download.companieshouse.gov.uk",
+      "archive_count": 4
+    },
+    "repd": {
+      "mode": "read-only exact-commit exact-path sparse checkout",
+      "repository": "Ventusltd/pipelinenews",
+      "commit": "35f35ada161223fb3ee19e525664ee7f17df1ddd",
+      "path": "data/projects",
+      "dataset": "DESNZ Renewable Energy Planning Database Q2 2026",
+      "upstream_manifest": "data/manifests/202608261927-build-manifest-v9-1.json",
+      "upstream_manifest_sha256": "67976a1bbcaf383ed7121b13060db3b864db9ce33dfc721a88b59c8ca8b8e06c",
+      "runtime_file_count": 17
+    }
+  },
+  "data_discipline": {
+    "owning_repository": "Ventusltd/companies",
+    "format": "parquet",
+    "compression": "zstd",
+    "engine": {
+      "name": "duckdb",
+      "version": "1.3.2",
+      "threads": 1
+    },
+    "company_grain": "one row per distinct company in the candidate cartridge union",
+    "company_declared_key": [
+      "company_number"
+    ],
+    "relationship_grain": "one evidence-qualified REPD candidate relationship",
+    "relationship_declared_key": [
+      "company_number",
+      "repd_ref",
+      "match_type"
+    ],
+    "touched_partition_policy": "full-generation-rewrite-from-empty-target",
+    "actual_landed_file_readback": true,
+    "typed_projection_readback": true,
+    "file_count_and_bytes_are_monitors_not_truth": true,
+    "foreign_repository_files_committed": false,
+    "foreign_data_materialised": true
+  },
+  "limits": {
+    "maximum_document_bytes": 128000000,
+    "maximum_other_member_bytes": 32000000,
+    "maximum_archive_bytes": 4000000000,
+    "maximum_total_compressed_bytes": 12000000000,
+    "maximum_expanded_bytes_per_archive": 60000000000,
+    "maximum_compression_ratio": 250,
+    "maximum_members_per_archive": 2000000,
+    "maximum_nested_zip_bytes": 100000000,
+    "maximum_zip_nesting": 1,
+    "account_extraction_passes": 2,
+    "compiler_passes": 2,
+    "candidate_seal_passes": 2,
+    "parquet_maximum_file_bytes": 90000000,
+    "candidate_maximum_total_bytes": 200000000
+  },
+  "determinism_and_retry": {
+    "fixed_generated_at": "2026-08-27T19:35:00Z",
+    "volatile_plan_and_evidence_timestamps_retained": false,
+    "run_id_stable_transport_names": true,
+    "transport_overwrite_on_rerun": true,
+    "candidate_commit_dates_fixed": true,
+    "candidate_ref_create_expectation": "absent",
+    "existing_exact_candidate_is_success": true,
+    "divergent_existing_candidate_is_failure": true
+  },
+  "publication": {
+    "trigger": "push",
+    "required_source_branch": "main",
+    "required_direct_parent": "1f91f8efced903aa82e62acf56b9af2db476cfdb",
+    "candidate_path": "data/candidates/202608272035/",
+    "candidate_branch": "candidate/202608272035",
+    "stable_path": "data/current/",
+    "stable_path_must_change": false,
+    "pages_must_change": false,
+    "main_must_receive_candidate_output": false,
+    "promotion_eligible": false
+  },
+  "candidate_outputs": {
+    "json_cartridges": 5,
+    "company_parquet": "companies-v1.parquet",
+    "relationship_parquet": "company-repd-candidates-v1.parquet",
+    "duckdb_audit": "parquet-audit-v2.json",
+    "exact_candidate_file_closure_enforced": true
+  },
+  "field_lineage": {
+    "companies_house_bulk": [
+      "company_number",
+      "company_name",
+      "company_status",
+      "sic_codes",
+      "accounts_date",
+      "total_assets",
+      "net_assets",
+      "turnover",
+      "cash"
+    ],
+    "repd_materialised": [
+      "repd_name_candidates[].repd_ref",
+      "repd_name_candidates[].gg_project_id",
+      "repd_name_candidates[].project",
+      "repd_name_candidates[].operator",
+      "repd_name_candidates[].technology",
+      "repd_name_candidates[].capacity_mw",
+      "repd_name_candidates[].status",
+      "repd_name_candidates[].latitude",
+      "repd_name_candidates[].longitude"
+    ],
+    "locally_derived": [
+      "classification",
+      "assets_gte_10m",
+      "energy_relevant_large_company",
+      "probable_project_spv",
+      "btm_tags",
+      "repd_name_candidates",
+      "repd_name_candidates[].match_type",
+      "repd_name_candidates[].atlas_url",
+      "financial_currency",
+      "news_identity_policy"
+    ]
+  },
+  "privacy": {
+    "directors": false,
+    "individual_psc": false,
+    "dates_of_birth": false,
+    "residential_addresses": false,
+    "credit_scores": false,
+    "bankability_scores": false
+  },
+  "usage_context": "NON_COMMERCIAL_OPEN_SOURCE",
+  "source_licences": {
+    "companies_house": {
+      "dataset": "Companies House basic company and monthly accounts bulk data",
+      "name": "Open Government Licence v3.0",
+      "url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "attribution": "Contains public sector information licensed under the Open Government Licence v3.0. Source: Companies House.",
+      "rights_caveat": "OGL applies to Crown copyright material; third-party rights and data-protection duties may still apply."
+    },
+    "repd": {
+      "dataset": "DESNZ Renewable Energy Planning Database Q2 2026",
+      "name": "Open Government Licence v3.0",
+      "url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "source_page": "https://www.gov.uk/government/publications/renewable-energy-planning-database-quarterly-extract",
+      "publication_updated": "2026-08-03",
+      "catalogue_url": "https://www.data.gov.uk/dataset/a5b0ed13-c960-49ce-b1f6-3a6bbe0db1b7/repd",
+      "catalogue_licence_id": "uk-ogl",
+      "attribution": "Contains public sector information licensed under the Open Government Licence v3.0. Renewable Energy Planning Database source: Department for Energy Security and Net Zero; data managed by Barbour ABI.",
+      "rights_caveat": "OGL applies except where otherwise stated; personal data and third-party rights may be outside its scope, and data-protection duties still apply."
+    }
+  },
+  "source_rights_are_distinct_from_usage_context": true,
+  "company_number_domain": {
+    "normalisation": "uppercase",
+    "accepted_pattern": "^[A-Z0-9]{8}$",
+    "declared_key": [
+      "company_number"
+    ],
+    "applies_to": [
+      "accounts member extraction",
+      "merged accounts validation",
+      "JSON cartridge sealing",
+      "company Parquet projection",
+      "relationship foreign key"
+    ]
+  }
+}
