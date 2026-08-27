@@ -20,6 +20,8 @@ The workflow does not continuously poll Companies House and does not commit raw 
 
 Before any bulk download starts, a deterministic fixture proves the £10 million threshold, industrial and behind-the-meter tags, exact and previous-name REPD matches, classification boundary, and privacy exclusions.
 
+REPD candidates carry their GlobalGrid project ID and an exact Atlas V8 coordinate deep link. Canonical `PRIMARY_MATCH` PipelineNews items may annotate an already-established REPD candidate, but NEWS can never create or upgrade company identity. Each manifest pins the accounts, REPD closure and NEWS input hashes.
+
 ## Boundaries
 
 - Companies House is credited as the public-register source.
