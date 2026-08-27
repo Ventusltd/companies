@@ -1,0 +1,89 @@
+{
+  "schema": "companies-house-bounded-candidate-source-v1",
+  "generation": "202608271507",
+  "base_commit": "145da3dc6ff7541edb008676528636c11ba428ee",
+  "deployment_state": "not-authorised",
+  "purpose": "Actions-only three-month Companies House candidate acquisition and quarantine",
+  "licence": {
+    "name": "Open Government Licence v3.0",
+    "url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    "attribution": "Contains public sector information licensed under the Open Government Licence v3.0. Source: Companies House.",
+    "rights_caveat": "OGL applies to Crown copyright material; third-party rights and data-protection duties may still apply.",
+    "accuracy_caveat": "Companies House records what was filed; it does not verify every filed statement."
+  },
+  "source_files": [
+    {
+      "path": ".github/workflows/202608271507-bounded-companies-house-candidate.yml",
+      "sha256": "d0f4c775503bcc9192060b8d3c373835c4e63266f33a6a0dbfc8b4028abf30c5"
+    },
+    {
+      "path": "build/python/202608271507-freeze-companies-house-plan.py",
+      "sha256": "b43064ef8784a802327326882b49ca1c51ad6dfff8e5db90ee274824960d75c2"
+    },
+    {
+      "path": "build/python/202608271507-download-planned-archive.py",
+      "sha256": "747eca36b6c090f1b241632c5fb338c427f6ca570fa2e20da7c2e19056e92486"
+    },
+    {
+      "path": "build/python/202608271507-extract-bounded-accounts.py",
+      "sha256": "6a5e5da4f3b9c976689488fb99227d5992380fb9375dd090678ea8bfa1018135"
+    },
+    {
+      "path": "build/python/202608271507-verify-companies-house-candidate.py",
+      "sha256": "22e8393dc55606e3f24381ed0fad0bf0ae545c51127a7a68c90f65e3a8558f02"
+    },
+    {
+      "path": "tests/test_202608271507_bounded_companies_house.py",
+      "sha256": "08980228b06f00ca89ce0b780dbd49ca1d68867c8dd29dfa7f4fb8e4fa0da131"
+    },
+    {
+      "path": "manifests/202608271507-bounded-companies-house-candidate.json",
+      "sha256": "SELF"
+    }
+  ],
+  "inputs": {
+    "companies_repository": "Ventusltd/companies",
+    "pipelinenews_repository": "Ventusltd/pipelinenews",
+    "pipelinenews_commit": "35f35ada161223fb3ee19e525664ee7f17df1ddd",
+    "companies_house_host": "download.companieshouse.gov.uk",
+    "optional_rest_host": "api.company-information.service.gov.uk",
+    "optional_rest_secret": "COMPANIES_HOUSE_API_KEY",
+    "optional_rest_default": "disabled",
+    "optional_rest_retention": "rate-limit evidence only; no response body or credential",
+    "news_identity_policy": "NEWS_MAY_ANNOTATE_BUT_NEVER_ESTABLISH_IDENTITY"
+  },
+  "limits": {
+    "accounts_months": 3,
+    "basic_snapshots": 1,
+    "maximum_files": 4,
+    "maximum_compressed_bytes": 12000000000,
+    "maximum_parallel_downloads": 3,
+    "maximum_archive_bytes": 4000000000,
+    "maximum_basic_members": 16,
+    "maximum_basic_expanded_bytes": 12000000000,
+    "maximum_members_per_archive": 2000000,
+    "maximum_expanded_bytes_per_archive": 60000000000,
+    "maximum_document_bytes": 32000000,
+    "maximum_nested_zip_bytes": 100000000,
+    "maximum_zip_nesting": 1,
+    "maximum_compression_ratio": 250,
+    "maximum_parse_error_rate": 0.02,
+    "account_extraction_passes": 2,
+    "compiler_passes": 2,
+    "artifact_retention_days": 1
+  },
+  "pinned_actions": {
+    "actions/checkout": "11bd71901bbe5b1630ceea73d27597364c9af683",
+    "actions/setup-python": "a26af69be951a213d495a4c3e4e4022e16d87065",
+    "actions/upload-artifact": "ea165f8d65b6e75b540449e92b4886f43607fa02",
+    "actions/download-artifact": "d3f86a106a0bac45b974a628896c90dbdf5c8093"
+  },
+  "publication": {
+    "candidate_path": "data/candidates/202608271507/",
+    "candidate_branch": "candidate/202608271507",
+    "stable_path": "data/current/",
+    "stable_path_must_change": false,
+    "pages_must_change": false,
+    "promotion_eligible": false
+  }
+}
