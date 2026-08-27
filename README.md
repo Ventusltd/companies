@@ -1,8 +1,8 @@
 # Companies
 
-Annual Companies House public-data processing for Deploy Net Zero.
+Bootstrap and quarterly Companies House public-data processing for Deploy Net Zero.
 
-The repository contains reviewed acquisition, accounts-extraction and cartridge-compilation code. It publishes a stable `data/current/` dataset that is overwritten by each successful annual refresh; Git history provides recovery and chronology.
+The repository contains reviewed acquisition, accounts-extraction and cartridge-compilation code. It publishes a stable `data/current/` dataset that is overwritten by each successful verified refresh; Git history provides recovery and chronology.
 
 ## Annual workflow
 
@@ -17,6 +17,8 @@ The owner triggers one annual run. It processes the latest rolling electronic-ac
 - behind-the-meter opportunity candidates.
 
 The workflow does not continuously poll Companies House and does not commit raw archives.
+
+The annual run is the mandatory bootstrap. It also writes `retained-companies-v1.json`, a compact, hash-bound state containing only qualifying public company records. After that bootstrap has passed, [Quarterly Companies House Refresh](https://github.com/Ventusltd/companies/actions/workflows/quarterly-companies-house-refresh.yml) processes only the newest three electronic-accounts months and the current basic-company snapshot. It combines new facts with the retained state, re-evaluates every retained company against current REPD and NEWS inputs, and rebuilds all cartridges. The quarterly workflow fails before downloading anything if verified retained state is absent.
 
 Before any bulk download starts, a deterministic fixture proves the £10 million threshold, industrial and behind-the-meter tags, exact and previous-name REPD matches, classification boundary, and privacy exclusions.
 
