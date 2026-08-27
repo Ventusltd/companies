@@ -1,0 +1,125 @@
+{
+  "schema": "companies-house-candidate-semantics-source-v1",
+  "generation": "202608271634",
+  "parent_generation": "202608271547",
+  "base_commit": "4012964c3ab1e2f559e4836d697b99a74c7291e2",
+  "deployment_state": "not-authorised",
+  "purpose": "Separate Ventus usage context from Companies House source licensing and independently re-prove the immutable parent candidate data law",
+  "usage_context": "NON_COMMERCIAL_OPEN_SOURCE",
+  "source_licence": "Open Government Licence v3.0",
+  "source_licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+  "source_attribution": "Contains public sector information licensed under the Open Government Licence v3.0. Source: Companies House.",
+  "source_files": [
+    {
+      "path": ".github/workflows/202608271634-normalise-companies-candidate.yml",
+      "sha256": "b5a78ec6a5da0877af80970225293665295a27207cb448ce26c2dbbe501b8087"
+    },
+    {
+      "path": "build/python/202608271634-normalise-companies-candidate.py",
+      "sha256": "ad44861b2fd0302f204dfef3ab232620caa1af2e76a8506b8bf402af2c3a54e9"
+    },
+    {
+      "path": "tests/test_202608271634_candidate_semantics.py",
+      "sha256": "d50a92b1e65ccf6e528df5a578aaa2240d02bf7d1d18ca2593981c31eb865c6a"
+    },
+    {
+      "path": "manifests/202608271634-companies-candidate-semantics.json",
+      "sha256": "SELF"
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "build/python/202608271547-verify-companies-house-candidate.py",
+      "sha256": "745e17dfeed42ed3d636ff6ffc3fac4099621a98707acd35c3f7e5867917affa"
+    },
+    {
+      "path": "manifests/202608271547-bounded-companies-house-candidate.json",
+      "sha256": "a03dbdd740213a0d6751c2bb74a3bea3f895e29a4c81345eb085b4c42b39b111"
+    },
+    {
+      "path": "build/python/202608271507-freeze-companies-house-plan.py",
+      "sha256": "b43064ef8784a802327326882b49ca1c51ad6dfff8e5db90ee274824960d75c2"
+    },
+    {
+      "path": "build/python/202608271507-download-planned-archive.py",
+      "sha256": "747eca36b6c090f1b241632c5fb338c427f6ca570fa2e20da7c2e19056e92486"
+    },
+    {
+      "path": "build/python/202608271507-extract-bounded-accounts.py",
+      "sha256": "6a5e5da4f3b9c976689488fb99227d5992380fb9375dd090678ea8bfa1018135"
+    },
+    {
+      "path": "build/python/202608271507-verify-companies-house-candidate.py",
+      "sha256": "22e8393dc55606e3f24381ed0fad0bf0ae545c51127a7a68c90f65e3a8558f02"
+    },
+    {
+      "path": "tests/test_202608271507_bounded_companies_house.py",
+      "sha256": "08980228b06f00ca89ce0b780dbd49ca1d68867c8dd29dfa7f4fb8e4fa0da131"
+    },
+    {
+      "path": "manifests/202608271507-bounded-companies-house-candidate.json",
+      "sha256": "2805518f899f01764637a835c2c601623758c8c6ee1146c220090eafa9c9c5bd"
+    }
+  ],
+  "parent_candidate": {
+    "source_run": 33086066404,
+    "required_generation": "202608271547",
+    "required_branch": "candidate/202608271547",
+    "required_source_commit": "4012964c3ab1e2f559e4836d697b99a74c7291e2",
+    "same_repository_only": true,
+    "data_copied_into_overlay": false
+  },
+  "data_law": {
+    "format": "parquet",
+    "required_compression_metadata": [
+      "ZSTD"
+    ],
+    "grain": "one row per distinct company in the candidate cartridge union",
+    "declared_key": [
+      "company_number"
+    ],
+    "required_predicates": [
+      "rows > 0",
+      "rows == distinct company_number",
+      "null or empty company_number == 0",
+      "duplicate company_number groups == 0",
+      "JSON record-universe SHA-256 == Parquet record_json-universe SHA-256",
+      "every typed Parquet column equals the canonical JSON analytical projection"
+    ],
+    "compression_read_from_parquet_metadata": true,
+    "semantic_closure_recomputed_independently": true,
+    "duckdb_version": "1.3.2"
+  },
+  "inherited_zip_guards": {
+    "maximum_document_bytes": 128000000,
+    "maximum_other_member_bytes": 32000000,
+    "maximum_expanded_bytes_per_archive": 60000000000,
+    "maximum_compression_ratio": 250,
+    "maximum_members_per_archive": 2000000,
+    "maximum_nested_zip_bytes": 100000000,
+    "maximum_zip_nesting": 1,
+    "extractor_sha256": "add4395ae057e81bf13f39fe7a01afe92d91ff75ea1884e240a745fe2dc271af"
+  },
+  "repository_boundary": {
+    "owning_repository": "Ventusltd/companies",
+    "successor_foreign_repository_access": false,
+    "archive_downloads_in_successor": 0,
+    "github_actions_is_compute_plane": true
+  },
+  "publication": {
+    "trigger": "workflow_dispatch",
+    "required_source_branch": "main",
+    "candidate_path": "data/candidates/202608271634/",
+    "candidate_branch": "candidate/202608271634",
+    "stable_path": "data/current/",
+    "stable_path_must_change": false,
+    "pages_must_change": false,
+    "promotion_eligible": false
+  },
+  "candidate_outputs": {
+    "manifest": "manifest-v1.json",
+    "proof": "verification-v1.json",
+    "exact_file_count": 2,
+    "parent_data_referenced_by_exact_commit_and_hash": true
+  }
+}
