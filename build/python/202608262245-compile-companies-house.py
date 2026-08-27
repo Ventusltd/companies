@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse, csv, hashlib, json, re, zipfile
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlencode
 
 LIMIT=10_000_000
 SPV_TERMS={"solar","wind","battery","bess","storage","renewable","energy","power","generation","farm","project","developments"}
@@ -49,12 +50,36 @@ def sic_tags(values):
         for tag,prefixes in BTM_PREFIXES.items():
             if division in prefixes:tags.add(tag)
     return sorted(tags)
-def repd_index(root):
+def news_index(path):
+    indexed={}
+    if not path or not path.exists():return indexed
+    data=json.loads(path.read_text())
+    for item in data.get("canonical_items",[]):
+        if item.get("role")!="PRIMARY_MATCH" or item.get("eligible_for_news_signal") is not True:continue
+        repd_ref=str(item.get("repd_ref", ""))
+        if not repd_ref:continue
+        indexed.setdefault(repd_ref,[]).append({key:item.get(key) for key in (
+          "gg_article_id","event","headline","published","source","url","confidence","role")})
+    for repd_ref in indexed:
+        indexed[repd_ref].sort(key=lambda item:(item.get("published") or "",item.get("gg_article_id") or ""),reverse=True)
+    return indexed
+def atlas_url(project):
+    if project.get("geometry_status")!="valid" or project.get("latitude") is None or project.get("longitude") is None:return None
+    query=urlencode({"repd_ref":project["repd_ref"],"project":project["name"],"technology":project.get("technology",""),
+      "capacity_mw":project["capacity_mw"],"latitude":project["latitude"],"longitude":project["longitude"],"zoom":"12"})
+    return f"https://globalgrid2050.com/repd_grid_atlasv8/?{query}"
+def repd_index(root,news):
     operators={}; projects={}; token_blocks={}
     for path in sorted(root.glob("*.json")):
         data=json.loads(path.read_text())
         for project in data.get("projects",[]):
-            record={"repd_ref":project["repd_ref"],"project":project["name"],"operator":project.get("operator",""),"capacity_mw":project["capacity_mw"]}
+            repd_ref=str(project["repd_ref"])
+            signals=news.get(repd_ref,[])
+            record={"repd_ref":repd_ref,"gg_project_id":project.get("gg_project_id",f"GG2050-REPD-{repd_ref}"),
+              "project":project["name"],"operator":project.get("operator",""),"capacity_mw":project["capacity_mw"],
+              "technology":project.get("technology"),"status":project.get("status"),"latitude":project.get("latitude"),
+              "longitude":project.get("longitude"),"atlas_url":atlas_url(project),"canonical_news_count":len(signals),
+              "latest_canonical_news":signals[:5]}
             operator=norm(project.get("operator",""))
             if operator:operators.setdefault(operator,[]).append(record)
             project_name=norm(project.get("name",""))
@@ -89,9 +114,13 @@ def accounts(path):
             row=json.loads(line); result[row["company_number"]]=row
     return result
 def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+def repd_closure(root):
+    entries=[f"{path.name}:{digest(path)}" for path in sorted(root.glob("*.json"))]
+    return {"files":len(entries),"sha256":hashlib.sha256(("\n".join(entries)+"\n").encode()).hexdigest()}
 def main():
-    p=argparse.ArgumentParser();p.add_argument("--raw",required=True);p.add_argument("--accounts",required=True);p.add_argument("--repd",required=True);p.add_argument("--output",required=True);p.add_argument("--stamp",required=True)
-    a=p.parse_args(); raw=Path(a.raw); acc=accounts(Path(a.accounts)); repd=repd_index(Path(a.repd)); selected={}; generated_at=datetime.now(timezone.utc)
+    p=argparse.ArgumentParser();p.add_argument("--raw",required=True);p.add_argument("--accounts",required=True);p.add_argument("--repd",required=True);p.add_argument("--news");p.add_argument("--output",required=True);p.add_argument("--stamp",required=True)
+    a=p.parse_args(); raw=Path(a.raw); accounts_path=Path(a.accounts); repd_root=Path(a.repd); news_path=Path(a.news) if a.news else None
+    acc=accounts(accounts_path); news=news_index(news_path); repd=repd_index(repd_root,news); selected={}; generated_at=datetime.now(timezone.utc)
     for archive in sorted(raw.glob("*.zip")):
         if "basiccompanydata" not in archive.name.lower():continue
         with zipfile.ZipFile(archive) as z:
@@ -123,11 +152,13 @@ def main():
                         evidence.extend(sorted({item["match_type"] for item in matches}))
                         if any(item["match_name_source"]=="PREVIOUS_LEGAL_NAME" for item in matches):evidence.append("PREVIOUS_LEGAL_NAME_MATCH")
                         if probable_spv:evidence.append("RENEWABLE_PROJECT_LEGAL_NAME")
+                        company_news={item["gg_article_id"]:item for match in matches for item in match["latest_canonical_news"]}
                         selected[number]={"company_name":name,"company_number":number,"company_status":status,"sic_codes":[x for x in sics if x],
                           "previous_names":previous_names,"registered_postcode":field(row,"RegAddress.PostCode"),
                           "accounts_date":facts.get("accounts_date"),"total_assets":facts.get("total_assets"),"net_assets":facts.get("net_assets"),
                           "turnover":facts.get("turnover"),"cash":facts.get("cash"),"financial_currency":"GBP","assets_gte_10m":large,"energy_relevant_large_company":energy_relevant_large,"btm_opportunity":btm_opportunity,"btm_tags":tags,
                           "repd_name_candidates":matches,"probable_project_spv":probable_spv,"classification":classification(matches,probable_spv,renewable_name),
+                          "repd_news_count":len(company_news),"latest_repd_news":sorted(company_news.values(),key=lambda item:(item.get("published") or "",item["gg_article_id"]),reverse=True)[:5],
                           "evidence":evidence,"last_checked_date":generated_at.date().isoformat()}
     out=Path(a.output);out.mkdir(parents=True,exist_ok=True); rows=list(selected.values())
     groups={"industrial-assets-gte-10m":[x for x in rows if x["assets_gte_10m"] and "INDUSTRIAL_SIC_B_TO_E" in x["btm_tags"]],"energy-relevant-assets-gte-10m":[x for x in rows if x["energy_relevant_large_company"]],"repd-linked":[x for x in rows if x["repd_name_candidates"]],"project-spv-candidates":[x for x in rows if x["classification"]=="PROBABLE_PROJECT_SPV"],"btm-opportunities":[x for x in rows if x["btm_opportunity"]]}
@@ -135,7 +166,9 @@ def main():
     for name,data in groups.items():
         path=out/f"{name}-v1.json";path.write_text(json.dumps({"schema":"companies-house-cartridge-v1","snapshot_id":a.stamp,"generated_at":generated_at.isoformat(),"records":data},separators=(",",":"))+"\n")
         files[name]={"path":path.name,"records":len(data),"sha256":digest(path)}
-    manifest=out/"manifest-v1.json";manifest.write_text(json.dumps({"schema":"companies-house-manifest-v1","snapshot_id":a.stamp,"refresh_policy":"annual-overwrite","threshold_gbp":LIMIT,"financial_currency":"GBP","files":files,"privacy":{"directors":False,"individual_psc":False,"residential_addresses":False}},indent=2)+"\n")
+    provenance={"accounts_sha256":digest(accounts_path),"repd":repd_closure(repd_root),"news_sha256":digest(news_path) if news_path else None,
+      "identity_rule":"REPD name rules establish candidates; canonical PRIMARY_MATCH news only annotates an established REPD candidate"}
+    manifest=out/"manifest-v1.json";manifest.write_text(json.dumps({"schema":"companies-house-manifest-v1","snapshot_id":a.stamp,"refresh_policy":"annual-overwrite","threshold_gbp":LIMIT,"financial_currency":"GBP","inputs":provenance,"files":files,"privacy":{"directors":False,"individual_psc":False,"residential_addresses":False}},indent=2)+"\n")
     if not rows:raise RuntimeError("Compilation produced no qualifying records")
     print(json.dumps({k:v["records"] for k,v in files.items()}))
 if __name__=="__main__":main()
