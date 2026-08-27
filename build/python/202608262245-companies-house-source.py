@@ -47,7 +47,7 @@ def latest_monthly_accounts(count: int) -> list[str]:
     candidates.sort(key=period)
     return candidates[-count:] if count else []
 
-def download(url: str, directory: Path) -> dict:
+def download(url: str, directory: Path, expected_bytes: int | None = None) -> dict:
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme != "https" or parsed.hostname != "download.companieshouse.gov.uk":
         raise RuntimeError(f"Source URL is not an official Companies House download: {url}")
@@ -57,6 +57,9 @@ def download(url: str, directory: Path) -> dict:
     size = 0
     with requests.get(url, headers={"User-Agent": UA}, timeout=(30, 300), stream=True) as response:
         response.raise_for_status()
+        advertised = response.headers.get("Content-Length", "")
+        if expected_bytes is not None and advertised.isdigit() and int(advertised) != expected_bytes:
+            raise RuntimeError(f"Archive size changed after preflight: {url}")
         with target.open("wb") as handle:
             for chunk in response.iter_content(1024 * 1024):
                 if chunk:
@@ -64,6 +67,9 @@ def download(url: str, directory: Path) -> dict:
     if size < 1024:
         target.unlink(missing_ok=True)
         raise RuntimeError(f"Unexpectedly small download: {url}")
+    if expected_bytes is not None and size != expected_bytes:
+        target.unlink(missing_ok=True)
+        raise RuntimeError(f"Downloaded size differs from preflight: {url}")
     return {"url": url, "filename": name, "bytes": size, "sha256": digest.hexdigest()}
 
 def main() -> int:
@@ -73,18 +79,30 @@ def main() -> int:
     parser.add_argument("--accounts-url", action="append", default=[])
     parser.add_argument("--latest-daily-accounts", type=int, default=0)
     parser.add_argument("--list-monthly-output")
+    parser.add_argument("--list-basic-output")
     parser.add_argument("--latest-monthly-count", type=int, default=12)
     parser.add_argument("--skip-basic", action="store_true")
+    parser.add_argument("--expected-bytes", type=int)
     args = parser.parse_args()
+    listed = {}
     if args.list_monthly_output:
         urls = latest_monthly_accounts(args.latest_monthly_count)
         Path(args.list_monthly_output).write_text(json.dumps(urls, separators=(",", ":")) + "\n")
-        print(json.dumps({"monthly_urls": len(urls)}))
+        listed["monthly_urls"] = len(urls)
+    if args.list_basic_output:
+        urls = latest_basic()
+        Path(args.list_basic_output).write_text(json.dumps(urls, separators=(",", ":")) + "\n")
+        listed["basic_urls"] = len(urls)
+    if listed:
+        print(json.dumps(listed, sort_keys=True))
         return 0
     out = Path(args.output); raw = out / "raw"; raw.mkdir(parents=True, exist_ok=True)
     basic = [] if args.skip_basic else (args.basic_url or latest_basic())
     accounts = args.accounts_url or latest_daily_accounts(args.latest_daily_accounts)
-    records = [download(url, raw) for url in [*basic, *accounts]]
+    urls = [*basic, *accounts]
+    if args.expected_bytes is not None and len(urls) != 1:
+        raise RuntimeError("--expected-bytes requires exactly one archive URL")
+    records = [download(url, raw, args.expected_bytes) for url in urls]
     manifest = {
         "schema": "companies-house-source-manifest-v1",
         "retrieved_at": datetime.now(timezone.utc).isoformat(),
