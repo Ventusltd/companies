@@ -1,0 +1,20 @@
+{
+  "archive_bytes": 2229763708,
+  "archive_filename": "Accounts_Monthly_Data-July2026.zip",
+  "archive_sha256": "cd042b3503a731d1bf99800e7e0974ad5df312c1d88aae780e3adf55d3bd4eaf",
+  "completed_at": "2026-08-27T21:55:00Z",
+  "documents_without_company_number": 580,
+  "documents_without_wanted_facts": 6839,
+  "eligible_documents": 295118,
+  "expanded_bytes": 17537496293,
+  "generation": "202608272155",
+  "members": 295404,
+  "output_sha256": "2cdf959ca9df27b3e2f95497828eda78aa5d161fb9a2818cf4140dd853358434",
+  "parse_error_rate": 0.0,
+  "parse_errors": 0,
+  "parsed_documents": 295118,
+  "records": 286651,
+  "schema": "companies-house-bounded-extraction-report-v1",
+  "status": "PASS",
+  "tolerant_documents": 0
+}

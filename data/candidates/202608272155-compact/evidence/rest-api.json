@@ -1,0 +1,11 @@
+{
+  "credential_retained": false,
+  "enabled": false,
+  "endpoint": "https://api.company-information.service.gov.uk/company/00000006",
+  "generation": "202608272155",
+  "policy": "fixed-bulk-generation-does-not-probe-rest",
+  "reason": "optional-secret-not-configured",
+  "response_body_retained": false,
+  "schema": "companies-house-optional-rest-evidence-v1",
+  "status": "SKIPPED"
+}

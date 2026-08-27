@@ -1,0 +1,177 @@
+{
+  "basic_company_rows_scanned": 5695465,
+  "companies_selected": 294904,
+  "companies_with_repd_candidates": 259582,
+  "company_repd_candidates": 482030,
+  "datasets": {
+    "company_repd_candidates": {
+      "compression": "zstd",
+      "compression_codecs": [
+        "ZSTD"
+      ],
+      "declared_key": [
+        "company_number",
+        "repd_ref",
+        "evidence_type"
+      ],
+      "distinct_keys": 482030,
+      "duplicate_key_groups": 0,
+      "evidence_class": "CANDIDATE",
+      "file": {
+        "bytes": 1405427,
+        "path": "company-repd-relationships-v1.parquet",
+        "sha256": "f278851979df8abd5dd66d3975176fdf159463538ed1a1b4a506d2568e300754"
+      },
+      "format": "parquet",
+      "grain": "one cross-repository candidate Company\u2013REPD relationship",
+      "identity_posture": "CANDIDATE_ONLY_NOT_CONFIRMED_OWNERSHIP",
+      "null_keys": 0,
+      "provenance_location": "manifest.inputs",
+      "record_universe_sha256": "915b52a90c6876510e757a3839e2eef0018929e8937c9d8ec454d8466b45ef06",
+      "required_column_null_rows": 0,
+      "rows": 482030,
+      "schema_contract": [
+        {
+          "name": "company_number",
+          "nullable": false,
+          "type": "VARCHAR"
+        },
+        {
+          "name": "repd_ref",
+          "nullable": false,
+          "type": "VARCHAR"
+        },
+        {
+          "name": "evidence_type",
+          "nullable": false,
+          "type": "VARCHAR"
+        }
+      ],
+      "schema_readback": [
+        {
+          "name": "company_number",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "repd_ref",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "evidence_type",
+          "type": "VARCHAR"
+        }
+      ],
+      "status": "PASS",
+      "typed_column_mismatches": 0
+    },
+    "solar_company_repd_relationships": {
+      "compression": "zstd",
+      "compression_codecs": [
+        "ZSTD"
+      ],
+      "declared_key": [
+        "company_number",
+        "repd_ref",
+        "evidence_type"
+      ],
+      "distinct_keys": 346233,
+      "duplicate_key_groups": 0,
+      "evidence_class": "CANDIDATE",
+      "file": {
+        "bytes": 1118626,
+        "path": "solar-company-repd-relationships-v1.parquet",
+        "sha256": "b02e61639e159258d968afecc9bf2b2412f53c4347fcda8510196abf76066aed"
+      },
+      "format": "parquet",
+      "grain": "one solar-filtered candidate company\u2013REPD relationship",
+      "identity_posture": "CANDIDATE_ONLY_NOT_CONFIRMED_OWNERSHIP",
+      "materialized_subset_of": "company_repd_candidates",
+      "null_keys": 0,
+      "predicate": "pinned_repd.technology = 'solar'",
+      "provenance_location": "manifest.inputs",
+      "record_universe_sha256": "d6328d5c9e0eb3bc638dd5ab116e0eec31d122b4a5f8231bcb6142c4b37897d7",
+      "required_column_null_rows": 0,
+      "rows": 346233,
+      "schema_contract": [
+        {
+          "name": "company_number",
+          "nullable": false,
+          "type": "VARCHAR"
+        },
+        {
+          "name": "repd_ref",
+          "nullable": false,
+          "type": "VARCHAR"
+        },
+        {
+          "name": "evidence_type",
+          "nullable": false,
+          "type": "VARCHAR"
+        }
+      ],
+      "schema_readback": [
+        {
+          "name": "company_number",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "repd_ref",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "evidence_type",
+          "type": "VARCHAR"
+        }
+      ],
+      "status": "PASS",
+      "typed_column_mismatches": 0
+    }
+  },
+  "deployment_state": "not-authorised",
+  "durable_output": {
+    "bridge_columns_per_table": 3,
+    "company_master_files": 0,
+    "company_master_rows": 0,
+    "descriptive_edge_columns": 0,
+    "embedded_relationship_json_fields": 0,
+    "per_row_digest_columns": 0,
+    "primary_product": "CROSS_REPOSITORY_RELATIONSHIP_REPORT",
+    "raw_company_files": 0,
+    "relationship_tables": [
+      "company-repd-relationships-v1.parquet",
+      "solar-company-repd-relationships-v1.parquet"
+    ],
+    "row_level_provenance_columns": 0
+  },
+  "generated_at": "2026-08-27T21:55:00Z",
+  "generation": "202608272155",
+  "resume_generation": "202608281337",
+  "schema": "companies-house-cross-repository-relationship-report-v1",
+  "selection_summary": {
+    "assets_gte_10m_companies": 505,
+    "basic_company_rows_scanned": 5695465,
+    "btm_tag_counts": {
+      "BTM_AIRPORT_INFRASTRUCTURE": 54,
+      "BTM_CHEMICAL_PHARMA": 389,
+      "BTM_COLD_STORAGE": 2310,
+      "BTM_DATA_CENTRE": 316,
+      "BTM_FOOD_PROCESSING": 1798,
+      "BTM_GLASS_CEMENT_MINERALS": 210,
+      "BTM_METALS_ENGINEERING": 1709,
+      "BTM_MINING": 375,
+      "BTM_PAPER": 103,
+      "BTM_RAIL_INFRASTRUCTURE": 83,
+      "BTM_RUBBER_PLASTICS": 249,
+      "BTM_SUPERMARKET": 1486,
+      "BTM_WATER_WASTE": 1030,
+      "INDUSTRIAL_SIC_B_TO_E": 15571
+    },
+    "candidate_relationship_rows": 482030,
+    "companies_with_repd_candidates": 259582,
+    "energy_relevant_large_companies": 385,
+    "probable_project_spvs": 39845,
+    "selected_companies": 294904
+  },
+  "solar_company_repd_relationships": 346233,
+  "status": "PASS"
+}

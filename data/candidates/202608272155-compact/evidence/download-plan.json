@@ -1,0 +1,58 @@
+{
+  "accounts_months": 3,
+  "base_commit": "edc8d5d08ca6e224af0a907af90d0ed253d1c60d",
+  "deployment_state": "not-authorised",
+  "file_limit": 4,
+  "files": [
+    {
+      "bytes": 1975424256,
+      "etag": "\"5c27d3b897a72e43c915cf5b5d167e77-236\"",
+      "filename": "Accounts_Monthly_Data-May2026.zip",
+      "kind": "accounts",
+      "last_modified": "Sat, 04 Jul 2026 09:00:07 GMT",
+      "resolved_url": "https://download.companieshouse.gov.uk/Accounts_Monthly_Data-May2026.zip",
+      "url": "https://download.companieshouse.gov.uk/Accounts_Monthly_Data-May2026.zip"
+    },
+    {
+      "bytes": 2348684884,
+      "etag": "\"b86d234bcb747225b02d8bae3bc93491-280\"",
+      "filename": "Accounts_Monthly_Data-June2026.zip",
+      "kind": "accounts",
+      "last_modified": "Sat, 01 Aug 2026 09:00:12 GMT",
+      "resolved_url": "https://download.companieshouse.gov.uk/Accounts_Monthly_Data-June2026.zip",
+      "url": "https://download.companieshouse.gov.uk/Accounts_Monthly_Data-June2026.zip"
+    },
+    {
+      "bytes": 2229763708,
+      "etag": "\"2dcaa897d193afbcf0f15be83d3a0a65-266\"",
+      "filename": "Accounts_Monthly_Data-July2026.zip",
+      "kind": "accounts",
+      "last_modified": "Mon, 10 Aug 2026 09:00:13 GMT",
+      "resolved_url": "https://download.companieshouse.gov.uk/Accounts_Monthly_Data-July2026.zip",
+      "url": "https://download.companieshouse.gov.uk/Accounts_Monthly_Data-July2026.zip"
+    },
+    {
+      "bytes": 493049031,
+      "etag": "\"b684020145defd5a3373b3d2c56c3b87-59\"",
+      "filename": "BasicCompanyDataAsOneFile-2026-08-01.zip",
+      "kind": "basic",
+      "last_modified": "Fri, 07 Aug 2026 08:10:19 GMT",
+      "resolved_url": "https://download.companieshouse.gov.uk/BasicCompanyDataAsOneFile-2026-08-01.zip",
+      "url": "https://download.companieshouse.gov.uk/BasicCompanyDataAsOneFile-2026-08-01.zip"
+    }
+  ],
+  "generation": "202608272155",
+  "licence": {
+    "accuracy_caveat": "Companies House records what was filed; it does not verify every filed statement.",
+    "attribution": "Contains public sector information licensed under the Open Government Licence v3.0. Source: Companies House.",
+    "name": "Open Government Licence v3.0",
+    "rights_caveat": "OGL applies to Crown copyright material; third-party rights and data-protection duties may still apply.",
+    "url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+  },
+  "maximum_archive_bytes": 4000000000,
+  "maximum_total_bytes": 12000000000,
+  "official_host": "download.companieshouse.gov.uk",
+  "planned_at": "2026-08-27T21:55:00Z",
+  "schema": "companies-house-bounded-download-plan-v1",
+  "total_bytes": 7046921879
+}

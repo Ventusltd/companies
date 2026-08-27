@@ -1,0 +1,16 @@
+{
+  "base_commit": "edc8d5d08ca6e224af0a907af90d0ed253d1c60d",
+  "bytes": 493049031,
+  "etag": "\"b684020145defd5a3373b3d2c56c3b87-59\"",
+  "filename": "BasicCompanyDataAsOneFile-2026-08-01.zip",
+  "generation": "202608272155",
+  "index": 3,
+  "kind": "basic",
+  "last_modified": "Fri, 07 Aug 2026 08:10:19 GMT",
+  "plan_sha256": "4451ed5da8cc2f9246f2e6cc06f120faec8efeb8e19c3bac3919975073e7025e",
+  "resolved_url": "https://download.companieshouse.gov.uk/BasicCompanyDataAsOneFile-2026-08-01.zip",
+  "retrieved_at": "2026-08-27T21:55:00Z",
+  "schema": "companies-house-bounded-download-receipt-v1",
+  "sha256": "dd625ad9b37c023c3cd8d942467d0a8348608bee15c13a4a9db1927e7ff23c21",
+  "url": "https://download.companieshouse.gov.uk/BasicCompanyDataAsOneFile-2026-08-01.zip"
+}

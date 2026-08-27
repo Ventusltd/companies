@@ -1,0 +1,16 @@
+{
+  "base_commit": "edc8d5d08ca6e224af0a907af90d0ed253d1c60d",
+  "bytes": 1975424256,
+  "etag": "\"5c27d3b897a72e43c915cf5b5d167e77-236\"",
+  "filename": "Accounts_Monthly_Data-May2026.zip",
+  "generation": "202608272155",
+  "index": 0,
+  "kind": "accounts",
+  "last_modified": "Sat, 04 Jul 2026 09:00:07 GMT",
+  "plan_sha256": "4451ed5da8cc2f9246f2e6cc06f120faec8efeb8e19c3bac3919975073e7025e",
+  "resolved_url": "https://download.companieshouse.gov.uk/Accounts_Monthly_Data-May2026.zip",
+  "retrieved_at": "2026-08-27T21:55:00Z",
+  "schema": "companies-house-bounded-download-receipt-v1",
+  "sha256": "a3cc2899ec94cabd1a8a1f7a2d5e8c3d1a30c5ff09a7be73687f275af03eabd3",
+  "url": "https://download.companieshouse.gov.uk/Accounts_Monthly_Data-May2026.zip"
+}

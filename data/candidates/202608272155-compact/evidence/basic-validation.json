@@ -1,0 +1,12 @@
+{
+  "archive_bytes": 493049031,
+  "archive_filename": "BasicCompanyDataAsOneFile-2026-08-01.zip",
+  "archive_sha256": "dd625ad9b37c023c3cd8d942467d0a8348608bee15c13a4a9db1927e7ff23c21",
+  "completed_at": "2026-08-27T21:55:00Z",
+  "csv_members": 1,
+  "expanded_bytes": 2803365091,
+  "generation": "202608272155",
+  "members": 1,
+  "schema": "companies-house-bounded-basic-validation-v1",
+  "status": "PASS"
+}

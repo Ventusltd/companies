@@ -1,0 +1,415 @@
+{
+  "audit": {
+    "bytes": 4002,
+    "path": "relationship-parquet-audit-v1.json",
+    "sha256": "5c2d58904f22ddf31e45228a69cd107dbbf38fc02e51baaab1ef5b0b712b6cda"
+  },
+  "basic_company_rows_scanned": 5695465,
+  "companies_selected": 294904,
+  "companies_with_repd_candidates": 259582,
+  "company_repd_candidates": 482030,
+  "coverage": {
+    "accounts_months": 3,
+    "annual_bootstrap": false,
+    "kind": "bounded-three-month-candidate",
+    "partial_coverage": true
+  },
+  "datasets": {
+    "company_repd_candidates": {
+      "compression": "zstd",
+      "compression_codecs": [
+        "ZSTD"
+      ],
+      "declared_key": [
+        "company_number",
+        "repd_ref",
+        "evidence_type"
+      ],
+      "distinct_keys": 482030,
+      "duplicate_key_groups": 0,
+      "evidence_class": "CANDIDATE",
+      "file": {
+        "bytes": 1405427,
+        "path": "company-repd-relationships-v1.parquet",
+        "sha256": "f278851979df8abd5dd66d3975176fdf159463538ed1a1b4a506d2568e300754"
+      },
+      "format": "parquet",
+      "grain": "one cross-repository candidate Company\u2013REPD relationship",
+      "identity_posture": "CANDIDATE_ONLY_NOT_CONFIRMED_OWNERSHIP",
+      "null_keys": 0,
+      "provenance_location": "manifest.inputs",
+      "record_universe_sha256": "915b52a90c6876510e757a3839e2eef0018929e8937c9d8ec454d8466b45ef06",
+      "required_column_null_rows": 0,
+      "rows": 482030,
+      "schema_contract": [
+        {
+          "name": "company_number",
+          "nullable": false,
+          "type": "VARCHAR"
+        },
+        {
+          "name": "repd_ref",
+          "nullable": false,
+          "type": "VARCHAR"
+        },
+        {
+          "name": "evidence_type",
+          "nullable": false,
+          "type": "VARCHAR"
+        }
+      ],
+      "schema_readback": [
+        {
+          "name": "company_number",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "repd_ref",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "evidence_type",
+          "type": "VARCHAR"
+        }
+      ],
+      "status": "PASS",
+      "typed_column_mismatches": 0
+    },
+    "solar_company_repd_relationships": {
+      "compression": "zstd",
+      "compression_codecs": [
+        "ZSTD"
+      ],
+      "declared_key": [
+        "company_number",
+        "repd_ref",
+        "evidence_type"
+      ],
+      "distinct_keys": 346233,
+      "duplicate_key_groups": 0,
+      "evidence_class": "CANDIDATE",
+      "file": {
+        "bytes": 1118626,
+        "path": "solar-company-repd-relationships-v1.parquet",
+        "sha256": "b02e61639e159258d968afecc9bf2b2412f53c4347fcda8510196abf76066aed"
+      },
+      "format": "parquet",
+      "grain": "one solar-filtered candidate company\u2013REPD relationship",
+      "identity_posture": "CANDIDATE_ONLY_NOT_CONFIRMED_OWNERSHIP",
+      "materialized_subset_of": "company_repd_candidates",
+      "null_keys": 0,
+      "predicate": "pinned_repd.technology = 'solar'",
+      "provenance_location": "manifest.inputs",
+      "record_universe_sha256": "d6328d5c9e0eb3bc638dd5ab116e0eec31d122b4a5f8231bcb6142c4b37897d7",
+      "required_column_null_rows": 0,
+      "rows": 346233,
+      "schema_contract": [
+        {
+          "name": "company_number",
+          "nullable": false,
+          "type": "VARCHAR"
+        },
+        {
+          "name": "repd_ref",
+          "nullable": false,
+          "type": "VARCHAR"
+        },
+        {
+          "name": "evidence_type",
+          "nullable": false,
+          "type": "VARCHAR"
+        }
+      ],
+      "schema_readback": [
+        {
+          "name": "company_number",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "repd_ref",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "evidence_type",
+          "type": "VARCHAR"
+        }
+      ],
+      "status": "PASS",
+      "typed_column_mismatches": 0
+    }
+  },
+  "deployment_state": "not-authorised",
+  "evidence": [
+    {
+      "bytes": 2676,
+      "path": "evidence/download-plan.json",
+      "sha256": "4451ed5da8cc2f9246f2e6cc06f120faec8efeb8e19c3bac3919975073e7025e"
+    },
+    {
+      "bytes": 386,
+      "path": "evidence/rest-api.json",
+      "sha256": "a6f6334f4d878644183cd2261caa258a16c8bbdd9f5bf547b75cfc44b77dac6f"
+    },
+    {
+      "bytes": 408,
+      "path": "evidence/basic-validation.json",
+      "sha256": "b6c50da3a60190c96d10f7ae0a26195f39f312e727632f15982f942eeecf85c7"
+    },
+    {
+      "bytes": 757,
+      "path": "evidence/receipt-0.json",
+      "sha256": "4b8b7cd5c9033190ecd1225e1deb3595bdc853a917ff0d31ccc307d577826fd6"
+    },
+    {
+      "bytes": 760,
+      "path": "evidence/receipt-1.json",
+      "sha256": "58340138934f8e02bf9903aa8764092ae26e97caca4a252cb04631c40c8a4b24"
+    },
+    {
+      "bytes": 760,
+      "path": "evidence/receipt-2.json",
+      "sha256": "e991c31ffae0a9f77cade3098f67f9238b7f9d9b8d8e260cc6d9c2a65640a137"
+    },
+    {
+      "bytes": 773,
+      "path": "evidence/receipt-3.json",
+      "sha256": "cc27a9e239895d3297588bc965cde43c59db0e90c2f15a1dfb25a7bcad5158c2"
+    },
+    {
+      "bytes": 720,
+      "path": "evidence/extraction-0.json",
+      "sha256": "e8c4d61f36ed384c7aa2b7e81c07cfafa4065953723f641ad0dfcb8f3fa02d58"
+    },
+    {
+      "bytes": 720,
+      "path": "evidence/extraction-1.json",
+      "sha256": "2be7977c1b800d4386fecbc2ed2341bae78617a2d89ee94c5559f9d4fcf996e9"
+    },
+    {
+      "bytes": 719,
+      "path": "evidence/extraction-2.json",
+      "sha256": "bf7e0623909f7356636eafbd9c7c67a0cb4c2a79c28189a29e091f10d207218b"
+    }
+  ],
+  "filing_truth_caveat": "Accounts facts are public filing facts and are not a credit or bankability score.",
+  "financial_currency": "GBP",
+  "generated_at": "2026-08-27T21:55:00Z",
+  "generation": "202608272155",
+  "inputs": {
+    "accounts_latest_records": 824666,
+    "accounts_latest_sha256": "ddcc1303e7425ed8be96a8c6f9db0b65e94b652c94e9c2c48b90198ba8db6f06",
+    "acquisition_run_id": 33123064395,
+    "acquisition_source_commit": "72c4e033f536d793e1a357b108b05fbac43e8d09",
+    "basic_archive_sha256": "dd625ad9b37c023c3cd8d942467d0a8348608bee15c13a4a9db1927e7ff23c21",
+    "basic_validation_sha256": "b6c50da3a60190c96d10f7ae0a26195f39f312e727632f15982f942eeecf85c7",
+    "companies_base_commit": "edc8d5d08ca6e224af0a907af90d0ed253d1c60d",
+    "download_plan_sha256": "4451ed5da8cc2f9246f2e6cc06f120faec8efeb8e19c3bac3919975073e7025e",
+    "news": {
+      "identity_policy": "annotation-only",
+      "included": false
+    },
+    "optional_rest": {
+      "enabled": false,
+      "evidence_sha256": "a6f6334f4d878644183cd2261caa258a16c8bbdd9f5bf547b75cfc44b77dac6f",
+      "status": "SKIPPED"
+    },
+    "pipelinenews_commit": "35f35ada161223fb3ee19e525664ee7f17df1ddd",
+    "repd": {
+      "files": [
+        {
+          "bytes": 624542,
+          "path": "202608261927-project-partition-v9-1-01.json",
+          "sha256": "6e72d36a8f880bfc39274221edf58d1b895202f01f2e56aae001ad25cb3b337d"
+        },
+        {
+          "bytes": 629501,
+          "path": "202608261927-project-partition-v9-1-02.json",
+          "sha256": "a2ba3598af8ff45726587b3a498c0f6a433ae007ec9eadbd5bfc682b7dca4b2e"
+        },
+        {
+          "bytes": 628898,
+          "path": "202608261927-project-partition-v9-1-03.json",
+          "sha256": "6f012e9251433e0d32095b2df75ae1c988a813a14647debe16c057dee550d23b"
+        },
+        {
+          "bytes": 625997,
+          "path": "202608261927-project-partition-v9-1-04.json",
+          "sha256": "1cdc7405098c85a477dd156930c4503ef7850ff005d1ec85a69928f10db6b7f5"
+        },
+        {
+          "bytes": 631815,
+          "path": "202608261927-project-partition-v9-1-05.json",
+          "sha256": "43988789140bf2211263ffe49b756bc8f7f4cd69531b2e91c56b2e7c2a90bcae"
+        },
+        {
+          "bytes": 630303,
+          "path": "202608261927-project-partition-v9-1-06.json",
+          "sha256": "e2c4d0c29e622270260e8fa71c1efae260e84fd3c9ebfa31b7dbf7bfe3da2d69"
+        },
+        {
+          "bytes": 628660,
+          "path": "202608261927-project-partition-v9-1-07.json",
+          "sha256": "8f2b2d2d74a031f459b94e626e288c11c148629e955f97ef688a27eb1a5e2c59"
+        },
+        {
+          "bytes": 631189,
+          "path": "202608261927-project-partition-v9-1-08.json",
+          "sha256": "f3c0dff755bc657c41b3e04305403bbcfbf94be5d893e85309faf9dd7cb1fa92"
+        },
+        {
+          "bytes": 630867,
+          "path": "202608261927-project-partition-v9-1-09.json",
+          "sha256": "a9427f109b7ad5ee881628fcbde3602daab62896e8517922ff68d2efe6a23b15"
+        },
+        {
+          "bytes": 628464,
+          "path": "202608261927-project-partition-v9-1-10.json",
+          "sha256": "57145897a6a457f3bfb58f431d7bfa6a75dd63bfd2708eb56c3802391847c6b3"
+        },
+        {
+          "bytes": 620261,
+          "path": "202608261927-project-partition-v9-1-11.json",
+          "sha256": "e79c4eb42d1d366f01f8f2a941d92ff231b8ea14c2e40a2677a89601926938d1"
+        },
+        {
+          "bytes": 615891,
+          "path": "202608261927-project-partition-v9-1-12.json",
+          "sha256": "ad077a3172f6813f2a641e2f51ab693bf038cae03b5cbbdaa4167973ce7a7388"
+        },
+        {
+          "bytes": 620861,
+          "path": "202608261927-project-partition-v9-1-13.json",
+          "sha256": "4545362b1355e256dc3025019f971ffa208cc8828059152a26b99ac66fb47817"
+        },
+        {
+          "bytes": 619833,
+          "path": "202608261927-project-partition-v9-1-14.json",
+          "sha256": "9cf8da7fcbf3c1d08830c613c69d0447c490d6126be3ebe8c2d9021a4ddcd004"
+        },
+        {
+          "bytes": 616440,
+          "path": "202608261927-project-partition-v9-1-15.json",
+          "sha256": "109f20651ce1234d8933bb5efab78cbf45081ae7b4966e63ec0fca560a76cf03"
+        },
+        {
+          "bytes": 221745,
+          "path": "202608261927-project-partition-v9-1-16.json",
+          "sha256": "ed4c672a6cb684a5fd29e17e436d4ee632de358de5e0a2cee9801c7ffa5ecc4b"
+        }
+      ],
+      "projects": 7680,
+      "sha256": "d00dffe4659dbbb796cb1f32a6e446d3c429e800fc2c446b79b90189ee1db99c"
+    },
+    "repd_runtime_read": {
+      "commit": "35f35ada161223fb3ee19e525664ee7f17df1ddd",
+      "foreign_data_materialised": true,
+      "foreign_repository_files_committed": false,
+      "mode": "read-only sparse checkout",
+      "path": "data/projects",
+      "repository": "Ventusltd/pipelinenews"
+    },
+    "retained_artifacts": [
+      {
+        "digest": "sha256:5458cb47d45107be3468472da15d02f18e0b5c0992f10c594af6897f2aea8aaa",
+        "name": "companies-plan-202608272155-33123064395"
+      },
+      {
+        "digest": "sha256:73cfb68813a6524b23eee4ae45504d3a2bed2f0035116cc0efa049c2b62d2b1c",
+        "name": "accounts-202608272155-33123064395-0"
+      },
+      {
+        "digest": "sha256:3da269b26136b8ca6b32e8200ae19527d8fb83f7836a661685fab78662047682",
+        "name": "accounts-202608272155-33123064395-1"
+      },
+      {
+        "digest": "sha256:4f37aa9ef85a32270d297cfbcd37606c5cad04b25af3db0c881a8324a0ccaf03",
+        "name": "accounts-202608272155-33123064395-2"
+      }
+    ],
+    "source_parent_commit": "29fba0f2bc9053188b5634754f400faa012f2899"
+  },
+  "output_policy": {
+    "aggregate_report_format": "JSON",
+    "bridge_columns_per_table": 3,
+    "canonical_relationship_format": "PARQUET",
+    "company_master_files": 0,
+    "company_master_rows": 0,
+    "descriptive_edge_columns": 0,
+    "duckdb_version": "1.3.2",
+    "duplicate_corpus_builds": 0,
+    "embedded_relationship_json_fields": 0,
+    "exact_file_closure_enforced": true,
+    "logical_json_cartridges": 0,
+    "maximum_candidate_total_bytes": 30000000,
+    "maximum_file_bytes": 20000000,
+    "per_row_digest_columns": 0,
+    "raw_archives": 0,
+    "raw_company_json_files": 0,
+    "relationship_tables": 2,
+    "row_level_provenance_columns": 0
+  },
+  "privacy": {
+    "bankability_scores": false,
+    "credit_scores": false,
+    "dates_of_birth": false,
+    "directors": false,
+    "individual_psc": false,
+    "residential_addresses": false
+  },
+  "promotion_eligible": false,
+  "publication": {
+    "candidate_branch": "candidate/202608272155-compact",
+    "candidate_path": "data/candidates/202608272155-compact/",
+    "pages_must_change": false,
+    "promotion_eligible": false,
+    "stable_path": "data/current/",
+    "stable_path_must_change": false
+  },
+  "relationship_truth_caveat": "All company\u2013REPD rows are name-evidence candidates, never confirmed ownership or project identity.",
+  "report": {
+    "bytes": 5178,
+    "path": "relationship-report-v1.json",
+    "sha256": "20016364908bfa90c842098e2e701e7fb5f46320ab15a3d641dbc12ad3e339e8"
+  },
+  "resume_generation": "202608281337",
+  "schema": "companies-house-relationship-report-candidate-v1",
+  "solar_company_repd_relationships": 346233,
+  "source_commit": "cb2a834adfb5d1a2ef1207c85bc164f237c873c3",
+  "source_licences": {
+    "companies_house": {
+      "dataset": "Companies House basic company and monthly accounts bulk data",
+      "licence": {
+        "accuracy_caveat": "Companies House records what was filed; it does not verify every filed statement.",
+        "attribution": "Contains public sector information licensed under the Open Government Licence v3.0. Source: Companies House.",
+        "name": "Open Government Licence v3.0",
+        "rights_caveat": "OGL applies to Crown copyright material; third-party rights and data-protection duties may still apply.",
+        "url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+      },
+      "source_owner": "Companies House"
+    },
+    "repd": {
+      "data_manager": "Barbour ABI",
+      "dataset": "DESNZ Renewable Energy Planning Database Q2 2026",
+      "licence": {
+        "attribution": "Contains public sector information licensed under the Open Government Licence v3.0. Renewable Energy Planning Database source: Department for Energy Security and Net Zero; data managed by Barbour ABI.",
+        "catalogue_licence_id": "uk-ogl",
+        "catalogue_url": "https://www.data.gov.uk/dataset/a5b0ed13-c960-49ce-b1f6-3a6bbe0db1b7/repd",
+        "name": "Open Government Licence v3.0",
+        "publication_updated": "2026-08-03",
+        "rights_caveat": "OGL applies except where otherwise stated; personal data and third-party rights may be outside its scope, and data-protection duties still apply.",
+        "source_page": "https://www.gov.uk/government/publications/renewable-energy-planning-database-quarterly-extract",
+        "url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+      },
+      "runtime_commit": "35f35ada161223fb3ee19e525664ee7f17df1ddd",
+      "runtime_path": "data/projects",
+      "runtime_repository": "Ventusltd/pipelinenews",
+      "source_owner": "Department for Energy Security and Net Zero",
+      "upstream_manifest": "data/manifests/202608261927-build-manifest-v9-1.json",
+      "upstream_manifest_sha256": "67976a1bbcaf383ed7121b13060db3b864db9ce33dfc721a88b59c8ca8b8e06c"
+    }
+  },
+  "source_rights_are_distinct_from_usage_context": true,
+  "supersedes_failed_run_id": 33164961170,
+  "threshold_gbp": 10000000,
+  "usage_context": "NON_COMMERCIAL_OPEN_SOURCE"
+}
