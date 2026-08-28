@@ -1,0 +1,345 @@
+name: 202608280327 Resume Bounded Companies House Candidate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/202608280327-resume-bounded-companies-house-candidate.yml
+
+concurrency:
+  group: companies-house-candidate-202608272155
+  cancel-in-progress: false
+
+env:
+  GENERATION: "202608272155"
+  RESUME_GENERATION: "202608280327"
+  BASE_COMMIT: "72c4e033f536d793e1a357b108b05fbac43e8d09"
+  PARENT_RUN_ID: "33123064395"
+  PIPELINENEWS_COMMIT: "35f35ada161223fb3ee19e525664ee7f17df1ddd"
+  FIXED_GENERATED_AT: "2026-08-27T21:55:00Z"
+
+jobs:
+  source-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      source_sha: ${{ steps.boundary.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - id: boundary
+        name: Prove the one-file direct-parent recovery closure
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_EVENT_NAME" = push
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD^)" = "$BASE_COMMIT"
+          git diff --name-only "$BASE_COMMIT" HEAD > /tmp/changed
+          test "$(wc -l < /tmp/changed)" -eq 1
+          test "$(cat /tmp/changed)" = .github/workflows/202608280327-resume-bounded-companies-house-candidate.yml
+
+          test "$(sha256sum build/python/202608272155-download-planned-archive.py | cut -d' ' -f1)" = d4f8d4b3d98e3c8df69cf668743320b18c177742113c7b331ab12f4dd9e78387
+          test "$(sha256sum build/python/202608272155-extract-bounded-accounts.py | cut -d' ' -f1)" = 717165dbfa9edaf16cf0a06b83f31153faabe1daf48960a3afbcd3b67a958823
+          test "$(sha256sum build/python/202608272155-verify-companies-house-candidate.py | cut -d' ' -f1)" = b81e200a44a2f293e71535a07ee6fcca54fca25915524af8ac1f28ea44b397fd
+          test "$(sha256sum build/python/202608262245-compile-companies-house.py | cut -d' ' -f1)" = f7e5ebfb6ddc885b3b2a05deeedff5bf4b4f808b78ef62974baa7025487dcc90
+          test "$(sha256sum build/python/202608262245-merge-accounts.py | cut -d' ' -f1)" = d6ff055510c9b42a1710d6f4cdd22288d7334d20e3ee4190be13ff5c219c2e2e
+
+          api="https://api.github.com/repos/$GITHUB_REPOSITORY"
+          curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer $GH_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$api/actions/runs/$PARENT_RUN_ID" > /tmp/run.json
+          jq -e --arg sha "$BASE_COMMIT" '
+            .id == 33123064395 and .head_sha == $sha and .status == "completed" and
+            .conclusion == "cancelled" and .run_attempt == 1
+          ' /tmp/run.json
+          curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer $GH_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$api/actions/runs/$PARENT_RUN_ID/artifacts?per_page=100" > /tmp/artifacts.json
+          jq -e '
+            ([.artifacts[] | select(.expired == false) | {name,digest}] | sort_by(.name)) ==
+            ([
+              {"name":"accounts-202608272155-33123064395-0","digest":"sha256:73cfb68813a6524b23eee4ae45504d3a2bed2f0035116cc0efa049c2b62d2b1c"},
+              {"name":"accounts-202608272155-33123064395-1","digest":"sha256:3da269b26136b8ca6b32e8200ae19527d8fb83f7836a661685fab78662047682"},
+              {"name":"accounts-202608272155-33123064395-2","digest":"sha256:4f37aa9ef85a32270d297cfbcd37606c5cad04b25af3db0c881a8324a0ccaf03"},
+              {"name":"companies-plan-202608272155-33123064395","digest":"sha256:5458cb47d45107be3468472da15d02f18e0b5c0992f10c594af6897f2aea8aaa"}
+            ] | sort_by(.name))
+          ' /tmp/artifacts.json
+          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  seal:
+    needs: source-boundary
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        pass: [a, b]
+    runs-on: ubuntu-latest
+    timeout-minutes: 210
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ needs.source-boundary.outputs.source_sha }}
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: Ventusltd/pipelinenews
+          ref: ${{ env.PIPELINENEWS_COMMIT }}
+          path: work/repd-source
+          sparse-checkout: |
+            /data/projects/
+            /data/manifests/202608261927-build-manifest-v9-1.json
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Install the pinned Parquet and DuckDB engine
+        run: python -m pip install --disable-pip-version-check --no-cache-dir duckdb==1.3.2
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: companies-plan-202608272155-33123064395
+          path: work/plan
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: Ventusltd/companies
+          run-id: 33123064395
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: accounts-202608272155-33123064395-*
+          path: work/months
+          merge-multiple: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: Ventusltd/companies
+          run-id: 33123064395
+      - name: Reconstruct the exact frozen compiler closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C work/repd-source rev-parse HEAD)" = "$PIPELINENEWS_COMMIT"
+          test "$(sha256sum work/plan/plan.json | cut -d' ' -f1)" = 4451ed5da8cc2f9246f2e6cc06f120faec8efeb8e19c3bac3919975073e7025e
+          test "$(sha256sum work/plan/rest-evidence.json | cut -d' ' -f1)" = a6f6334f4d878644183cd2261caa258a16c8bbdd9f5bf547b75cfc44b77dac6f
+          python build/python/202608262245-merge-accounts.py --input work/months --output work/accounts-latest.ndjson
+          python build/python/202608272155-download-planned-archive.py \
+            --plan work/plan/plan.json --index 3 --output work/basic/raw \
+            --receipt work/months/receipt-3.json
+          archive="$(find work/basic/raw -maxdepth 1 -type f -name '*.zip' -print -quit)"
+          test -n "$archive"
+          python build/python/202608272155-extract-bounded-accounts.py \
+            --kind basic --input "$archive" --report work/months/basic-validation.json
+          python build/python/202608262245-compile-companies-house.py \
+            --raw work/basic/raw --accounts work/accounts-latest.ndjson \
+            --repd work/repd-source/data/projects --output "work/raw-${{ matrix.pass }}" \
+            --stamp "$GENERATION"
+      - name: Seal one independently bounded pass
+        shell: bash
+        run: |
+          set +e
+          started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          timeout --signal=TERM --kill-after=30s 150m \
+            python build/python/202608272155-verify-companies-house-candidate.py \
+              --seal --input "work/raw-${{ matrix.pass }}" \
+              --output "work/candidate-${{ matrix.pass }}" \
+              --plan work/plan/plan.json --receipts work/months --reports work/months \
+              --repd work/repd-source/data/projects --basic work/basic/raw \
+              --accounts work/accounts-latest.ndjson --rest-evidence work/plan/rest-evidence.json \
+              --basic-report work/months/basic-validation.json \
+              --source-commit "${{ needs.source-boundary.outputs.source_sha }}" \
+              --report "work/seal-${{ matrix.pass }}.json"
+          status=$?
+          if [ ! -s "work/seal-${{ matrix.pass }}.json" ]; then
+            jq -n --arg generation "$GENERATION" --arg resume "$RESUME_GENERATION" \
+              --arg pass "${{ matrix.pass }}" --arg started "$started" --argjson exit_code "$status" '
+              {
+                schema:"companies-house-bounded-verification-v5", generation:$generation,
+                status:"FAIL", companies:0, bytes_monitor:0, cartridges:{},
+                resource_totals:{},
+                errors:["seal process exceeded the explicit 150-minute ceiling or terminated before emitting its report"],
+                quarantine:{resume_generation:$resume, pass:$pass, parent_run_id:33123064395,
+                  parent_job_id:98703159770, parent_stage:"seal", started_at:$started,
+                  process_exit_code:$exit_code, candidate_bytes_published:false}
+              }
+            ' > "work/seal-${{ matrix.pass }}.json"
+          fi
+          cat "work/seal-${{ matrix.pass }}.json"
+          test "$status" -eq 0
+          test "$(jq -r '.status' "work/seal-${{ matrix.pass }}.json")" = PASS
+      - name: Exclude raw inputs and stage only candidate closure
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          find work -type f -name '*.zip' -delete
+          test "$(find work -type f -name '*.zip' | wc -l)" -eq 0
+          mkdir -p artifact/candidate
+          mv "work/candidate-${{ matrix.pass }}/." artifact/candidate/
+          cp "work/seal-${{ matrix.pass }}.json" artifact/seal.json
+          test -z "$(find artifact -type l -print -quit)"
+          test -z "$(find artifact/candidate -type f -size +90000000c -print -quit)"
+          test "$(find artifact/candidate -type f -printf '%s\n' | awk '{sum += $1} END {print sum + 0}')" -le 200000000
+      - name: Retain structured timeout or validation quarantine evidence
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: companies-quarantine-202608280327-${{ github.run_id }}-${{ matrix.pass }}
+          path: work/seal-${{ matrix.pass }}.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+      - name: Transport one sealed candidate for independent readback
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: companies-seal-202608272155-${{ github.run_id }}-${{ matrix.pass }}
+          path: artifact/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  readback:
+    needs: [source-boundary, seal]
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        pass: [a, b]
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ needs.source-boundary.outputs.source_sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Install the independently pinned readback engine
+        run: python -m pip install --disable-pip-version-check --no-cache-dir duckdb==1.3.2
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: companies-seal-202608272155-${{ github.run_id }}-${{ matrix.pass }}
+          path: staged
+      - name: Independently read back the actual landed JSON and Parquet grains
+        run: |
+          python build/python/202608272155-verify-companies-house-candidate.py \
+            --verify --input staged/candidate --report verification.json
+          test "$(jq -r '.status' verification.json)" = PASS
+          manifest=staged/candidate/manifest-v2.json
+          test "$(jq -r '.inputs.generation_source_commit' "$manifest")" = "${{ needs.source-boundary.outputs.source_sha }}"
+          test "$(jq -r '.analytical_dataset.compression_codecs == ["ZSTD"]' "$manifest")" = true
+          test "$(jq -r '.analytical_dataset.rows == .analytical_dataset.distinct_keys' "$manifest")" = true
+          test "$(jq -r '.analytical_dataset.null_keys + .analytical_dataset.duplicate_key_groups + .analytical_dataset.typed_column_mismatches' "$manifest")" -eq 0
+          test "$(jq -r '.relationship_dataset.compression_codecs == ["ZSTD"]' "$manifest")" = true
+          test "$(jq -r '.relationship_dataset.rows == .relationship_dataset.distinct_keys' "$manifest")" = true
+          test "$(jq -r '.relationship_dataset.null_keys + .relationship_dataset.duplicate_key_groups + .relationship_dataset.typed_column_mismatches' "$manifest")" -eq 0
+          test "$(jq -c '.relationship_dataset.declared_key' "$manifest")" = '["company_number","repd_ref","match_type"]'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: companies-readback-202608272155-${{ github.run_id }}-${{ matrix.pass }}
+          path: verification.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  compare-and-publish-candidate:
+    needs: [source-boundary, readback]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ needs.source-boundary.outputs.source_sha }}
+          fetch-depth: 1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: companies-seal-202608272155-${{ github.run_id }}-a
+          path: staged/a
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: companies-seal-202608272155-${{ github.run_id }}-b
+          path: staged/b
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: companies-readback-202608272155-${{ github.run_id }}-a
+          path: readback/a
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: companies-readback-202608272155-${{ github.run_id }}-b
+          path: readback/b
+      - name: Compare independent seals and atomically create the immutable candidate branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ needs.source-boundary.outputs.source_sha }}"
+          test ! -e data/current
+          diff -qr staged/a/candidate staged/b/candidate
+          cmp readback/a/verification.json readback/b/verification.json
+          candidate=staged/a/candidate
+          manifest="$candidate/manifest-v2.json"
+          test "$(jq -r '.deployment_state' "$manifest")" = not-authorised
+          test "$(jq -r '.promotion_eligible' "$manifest")" = false
+          test "$(jq -r '.usage_context' "$manifest")" = NON_COMMERCIAL_OPEN_SOURCE
+          test "$(jq -r '.source_rights_are_distinct_from_usage_context' "$manifest")" = true
+          test "$(jq -r '.source_licences.repd.licence.name' "$manifest")" = "Open Government Licence v3.0"
+          test "$(jq -r '.candidate_outputs.maximum_published_file_bytes' "$manifest")" -eq 90000000
+          test "$(jq -r '.candidate_outputs.maximum_candidate_total_bytes' "$manifest")" -eq 200000000
+          test -z "$(find "$candidate" -type l -print -quit)"
+          test -z "$(find "$candidate" -type f -size +90000000c -print -quit)"
+          test "$(find "$candidate" -type f -printf '%s\n' | awk '{sum += $1} END {print sum + 0}')" -le 200000000
+          {
+            printf '%s\n' manifest-v2.json
+            jq -r '.cartridges[] | .shards[].path' "$manifest"
+            jq -r '.evidence[].path' "$manifest"
+            jq -r '.analytical_dataset.file.path,.relationship_dataset.file.path,.audits[].path' "$manifest"
+          } | sort -u > /tmp/expected
+          find "$candidate" -type f -printf '%P\n' | sort > /tmp/actual
+          diff -u /tmp/expected /tmp/actual
+
+          mkdir -p "data/candidates/$GENERATION"
+          cp -R "$candidate/." "data/candidates/$GENERATION/"
+          git add "data/candidates/$GENERATION"
+          test -n "$(git diff --cached --name-only)"
+          staged_total=0
+          while IFS= read -r path; do
+            case "$path" in
+              data/candidates/202608272155/*) ;;
+              *) echo "Candidate commit escaped its immutable path: $path" >&2; exit 1 ;;
+            esac
+            test "$(git ls-files -s -- "$path" | awk '{print $1}')" = 100644
+            blob_size="$(git cat-file -s ":$path")"
+            test "$blob_size" -le 90000000
+            staged_total=$((staged_total + blob_size))
+          done < <(git diff --cached --name-only)
+          test "$staged_total" -le 200000000
+          if git diff --cached --name-only | grep -Eq '(^|/)current/|pages|releases'; then
+            echo "Candidate commit attempted a stable or deployment mutation" >&2
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          GIT_AUTHOR_DATE="$FIXED_GENERATED_AT" GIT_COMMITTER_DATE="$FIXED_GENERATED_AT" \
+            git commit -m "data: quarantine Companies candidate $GENERATION"
+          candidate_commit="$(git rev-parse HEAD)"
+          candidate_ref="refs/heads/candidate/$GENERATION"
+          if git push --force-with-lease="$candidate_ref:" origin "HEAD:$candidate_ref"; then
+            exit 0
+          fi
+          git fetch --no-tags origin "$candidate_ref"
+          test "$(git rev-parse FETCH_HEAD)" = "$candidate_commit"
