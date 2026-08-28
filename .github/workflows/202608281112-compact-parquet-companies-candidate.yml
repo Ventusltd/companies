@@ -1,0 +1,431 @@
+name: 202608281112 Compact Company REPD Relationship Candidate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/202608281112-compact-parquet-companies-candidate.yml
+      - README.md
+      - build/python/202608281112-compact-parquet-companies.py
+      - contracts/202608281112-compact-parquet-companies.json
+      - tests/test_202608281112_compact_parquet_companies.py
+
+concurrency:
+  group: companies-house-compact-candidate-202608272155
+  cancel-in-progress: false
+
+env:
+  GENERATION: "202608272155"
+  RESUME_GENERATION: "202608281112"
+  SOURCE_PARENT: "49fa8deaac277794251eb808a4747b09a35cda3c"
+  ACQUISITION_RUN_ID: "33123064395"
+  ACQUISITION_SOURCE_SHA: "72c4e033f536d793e1a357b108b05fbac43e8d09"
+  FAILED_RUN_ID: "33149009261"
+  PIPELINENEWS_COMMIT: "35f35ada161223fb3ee19e525664ee7f17df1ddd"
+  FIXED_GENERATED_AT: "2026-08-27T21:55:00Z"
+  CONTRACT: contracts/202608281112-compact-parquet-companies.json
+  CANDIDATE_BRANCH: candidate/202608272155-compact
+  CANDIDATE_PATH: data/candidates/202608272155-compact
+
+jobs:
+  source-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      source_sha: ${{ steps.boundary.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - id: boundary
+        name: Prove the exact five-file direct-parent source and retained evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_EVENT_NAME" = push
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 2
+          test "$(git rev-parse HEAD^)" = "$SOURCE_PARENT"
+          test "$(git rev-list --count "$SOURCE_PARENT"..HEAD)" -eq 1
+
+          git diff --name-only "$SOURCE_PARENT" HEAD | sort > /tmp/actual-files
+          printf '%s\n' \
+            .github/workflows/202608281112-compact-parquet-companies-candidate.yml \
+            README.md \
+            build/python/202608281112-compact-parquet-companies.py \
+            contracts/202608281112-compact-parquet-companies.json \
+            tests/test_202608281112_compact_parquet_companies.py \
+            | sort > /tmp/expected-files
+          diff -u /tmp/expected-files /tmp/actual-files
+          test "$(wc -l < /tmp/actual-files)" -eq 5
+          test -z "$(git diff --diff-filter=D --name-only "$SOURCE_PARENT" HEAD)"
+
+          python build/python/202608281112-compact-parquet-companies.py \
+            doctor --root . > /tmp/doctor.json
+          test "$(jq -r '.status' /tmp/doctor.json)" = PASS
+          test "$(jq -r '.source_files' /tmp/doctor.json)" -eq 5
+          test "$(jq -r '.generation' "$CONTRACT")" = "$GENERATION"
+          test "$(jq -r '.resume_generation' "$CONTRACT")" = "$RESUME_GENERATION"
+          test "$(jq -r '.schema' "$CONTRACT")" = companies-house-relationship-report-contract-v1
+          test "$(jq -r '.duckdb_version' "$CONTRACT")" = 1.3.2
+          test "$(jq -r '.expected_companies_selected' "$CONTRACT")" -eq 294904
+          test "$(jq -r '.maximum_file_bytes' "$CONTRACT")" -eq 20000000
+          test "$(jq -r '.maximum_total_bytes' "$CONTRACT")" -eq 30000000
+          test "$(jq -r '.inputs.acquisition_run_id' "$CONTRACT")" -eq "$ACQUISITION_RUN_ID"
+          test "$(jq -r '.inputs.acquisition_source_commit' "$CONTRACT")" = "$ACQUISITION_SOURCE_SHA"
+          test "$(jq -r '.inputs.pipelinenews_commit' "$CONTRACT")" = "$PIPELINENEWS_COMMIT"
+          test "$(jq -r '.hard_gates.duplicate_corpus_builds' "$CONTRACT")" -eq 0
+          test "$(jq -r '.hard_gates.raw_archives' "$CONTRACT")" -eq 0
+          test "$(jq -r '.hard_gates.logical_json_cartridges' "$CONTRACT")" -eq 0
+          test "$(jq -r '.hard_gates.company_master_files' "$CONTRACT")" -eq 0
+          test "$(jq -r '.hard_gates.company_master_rows' "$CONTRACT")" -eq 0
+          test "$(jq -r '.hard_gates.embedded_relationship_json_fields' "$CONTRACT")" -eq 0
+          test "$(jq -r '.hard_gates.promotion_eligible' "$CONTRACT")" = false
+          test "$(jq '.outputs | has("companies")' "$CONTRACT")" = false
+          test "$(jq '.grains | has("companies-v1.parquet")' "$CONTRACT")" = false
+          test "$(jq -r '.outputs.company_repd_candidates' "$CONTRACT")" = company-repd-relationships-v1.parquet
+          test "$(jq -r '.outputs.solar_company_repd_relationships' "$CONTRACT")" = solar-company-repd-relationships-v1.parquet
+          test "$(jq -r '.outputs.report' "$CONTRACT")" = relationship-report-v1.json
+          test "$(jq -r '.outputs.audit' "$CONTRACT")" = relationship-parquet-audit-v1.json
+          test "$(jq -r '.outputs.manifest' "$CONTRACT")" = manifest-compact-v1.json
+          test "$(jq '[.relationship_schema[].name] | index("relationship_json")' "$CONTRACT")" = null
+          test "$(jq '[.relationship_schema[].name] | index("relationship_sha256") != null' "$CONTRACT")" = true
+
+          api="https://api.github.com/repos/$GITHUB_REPOSITORY"
+          curl --fail --silent --show-error --location --max-time 30 --retry 2 --retry-delay 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$api/actions/runs/$ACQUISITION_RUN_ID" > /tmp/acquisition-run.json
+          jq -e --arg sha "$ACQUISITION_SOURCE_SHA" '
+            .id == 33123064395 and .head_sha == $sha and .status == "completed" and
+            .conclusion == "cancelled" and .run_attempt == 1
+          ' /tmp/acquisition-run.json
+
+          curl --fail --silent --show-error --location --max-time 30 --retry 2 --retry-delay 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$api/actions/runs/$ACQUISITION_RUN_ID/artifacts?per_page=100" > /tmp/acquisition-artifacts.json
+          jq -e '
+            .total_count == 4 and
+            ([.artifacts[] | select(.expired == false) | {name,digest}] | sort_by(.name)) ==
+            ([
+              {"name":"companies-plan-202608272155-33123064395","digest":"sha256:5458cb47d45107be3468472da15d02f18e0b5c0992f10c594af6897f2aea8aaa"},
+              {"name":"accounts-202608272155-33123064395-0","digest":"sha256:73cfb68813a6524b23eee4ae45504d3a2bed2f0035116cc0efa049c2b62d2b1c"},
+              {"name":"accounts-202608272155-33123064395-1","digest":"sha256:3da269b26136b8ca6b32e8200ae19527d8fb83f7836a661685fab78662047682"},
+              {"name":"accounts-202608272155-33123064395-2","digest":"sha256:4f37aa9ef85a32270d297cfbcd37606c5cad04b25af3db0c881a8324a0ccaf03"}
+            ] | sort_by(.name))
+          ' /tmp/acquisition-artifacts.json
+
+          curl --fail --silent --show-error --location --max-time 30 --retry 2 --retry-delay 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$api/actions/runs/$FAILED_RUN_ID" > /tmp/failed-run.json
+          jq -e --arg sha "$SOURCE_PARENT" '
+            .id == 33149009261 and .head_sha == $sha and .status == "completed" and
+            .conclusion == "failure" and .run_attempt == 1
+          ' /tmp/failed-run.json
+          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  build-once:
+    needs: source-boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ needs.source-boundary.outputs.source_sha }}
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: Ventusltd/pipelinenews
+          ref: ${{ env.PIPELINENEWS_COMMIT }}
+          path: work/repd-source
+          sparse-checkout: |
+            /data/projects/
+            /data/manifests/202608261927-build-manifest-v9-1.json
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Install the pinned DuckDB engine
+        run: python -m pip install --disable-pip-version-check --no-cache-dir duckdb==1.3.2
+      - name: Validate the compact source closure
+        run: |
+          python -m py_compile \
+            build/python/202608281112-compact-parquet-companies.py \
+            tests/test_202608281112_compact_parquet_companies.py
+          python tests/test_202608281112_compact_parquet_companies.py
+          python build/python/202608281112-compact-parquet-companies.py doctor --root .
+          test "$(git -C work/repd-source rev-parse HEAD)" = "$PIPELINENEWS_COMMIT"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: companies-plan-202608272155-33123064395
+          path: work/plan
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: Ventusltd/companies
+          run-id: 33123064395
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: accounts-202608272155-33123064395-*
+          path: work/months
+          merge-multiple: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: Ventusltd/companies
+          run-id: 33123064395
+      - name: Reconstruct the exact retained acquisition inputs once
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(sha256sum work/plan/plan.json | cut -d' ' -f1)" = 4451ed5da8cc2f9246f2e6cc06f120faec8efeb8e19c3bac3919975073e7025e
+          test "$(sha256sum work/plan/rest-evidence.json | cut -d' ' -f1)" = a6f6334f4d878644183cd2261caa258a16c8bbdd9f5bf547b75cfc44b77dac6f
+          python build/python/202608262245-merge-accounts.py \
+            --input work/months --output work/accounts-latest.ndjson
+          python build/python/202608272155-download-planned-archive.py \
+            --plan work/plan/plan.json --index 3 --output work/basic/raw \
+            --receipt work/months/receipt-3.json
+          archive="$(find work/basic/raw -maxdepth 1 -type f -name '*.zip' -print -quit)"
+          test -n "$archive"
+          python build/python/202608272155-extract-bounded-accounts.py \
+            --kind basic --input "$archive" --report work/months/basic-validation.json
+      - name: Scan once and build only compact relationship and report outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 180m \
+            python build/python/202608281112-compact-parquet-companies.py build \
+              --root . \
+              --output work/candidate \
+              --plan work/plan/plan.json \
+              --receipts work/months \
+              --reports work/months \
+              --repd work/repd-source/data/projects \
+              --basic work/basic/raw \
+              --accounts work/accounts-latest.ndjson \
+              --rest-evidence work/plan/rest-evidence.json \
+              --basic-report work/months/basic-validation.json \
+              --source-commit "${{ needs.source-boundary.outputs.source_sha }}" \
+            | tee work/build-report.json
+          test "$(jq -r '.status' work/build-report.json)" = PASS
+          test "$(jq -r '.companies_selected' work/build-report.json)" -eq 294904
+          test "$(jq -r '.basic_company_rows_scanned' work/build-report.json)" -gt 294904
+          test "$(jq -r '.company_repd_candidates' work/build-report.json)" -gt 0
+          test "$(jq -r '.solar_company_repd_relationships' work/build-report.json)" -gt 0
+          test "$(jq -r '.candidate_bytes' work/build-report.json)" -le 30000000
+          test ! -e work/candidate/companies-v1.parquet
+          printf '%s\n' \
+            company-repd-relationships-v1.parquet \
+            solar-company-repd-relationships-v1.parquet \
+            | sort > /tmp/expected-parquet
+          find work/candidate -maxdepth 1 -type f -name '*.parquet' -printf '%f\n' \
+            | sort > /tmp/actual-parquet
+          diff -u /tmp/expected-parquet /tmp/actual-parquet
+          test -f work/candidate/relationship-report-v1.json
+          test -f work/candidate/relationship-parquet-audit-v1.json
+          test -f work/candidate/manifest-compact-v1.json
+          {
+            printf '%s\n' \
+              company-repd-relationships-v1.parquet \
+              solar-company-repd-relationships-v1.parquet \
+              relationship-report-v1.json \
+              relationship-parquet-audit-v1.json \
+              manifest-compact-v1.json
+            jq -r '.evidence[].path' work/candidate/manifest-compact-v1.json
+          } | sort -u > /tmp/expected-candidate-files
+          find work/candidate -type f -printf '%P\n' | sort > /tmp/actual-candidate-files
+          diff -u /tmp/expected-candidate-files /tmp/actual-candidate-files
+      - name: Exclude transient company inputs and stage only relationships and reports
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find work/basic/raw -type f -name '*.zip' | wc -l)" -eq 1
+          find work/basic/raw -type f -name '*.zip' -delete
+          test -z "$(find work/basic/raw -type f -print -quit)"
+          mkdir -p artifact/candidate
+          cp -a work/candidate/. artifact/candidate/
+          cp work/build-report.json artifact/build-report.json
+          test ! -e artifact/candidate/companies-v1.parquet
+          test -z "$(find artifact -type l -print -quit)"
+          test -z "$(find artifact/candidate -type f -size +20000000c -print -quit)"
+          test "$(find artifact/candidate -type f -printf '%s\n' | awk '{sum += $1} END {print sum + 0}')" -le 30000000
+          python build/python/202608281112-compact-parquet-companies.py verify \
+            --root artifact/candidate \
+            --expected-source-commit "${{ needs.source-boundary.outputs.source_sha }}" \
+            > /tmp/staged-verification.json
+          cmp work/build-report.json /tmp/staged-verification.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: company-repd-relationship-build-202608272155-${{ github.run_id }}
+          path: artifact/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  artifact-readback:
+    needs: [source-boundary, build-once]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ needs.source-boundary.outputs.source_sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Install the independently pinned DuckDB readback engine
+        run: python -m pip install --disable-pip-version-check --no-cache-dir duckdb==1.3.2
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: company-repd-relationship-build-202608272155-${{ github.run_id }}
+          path: staged
+      - name: Read back the landed artifact with DuckDB
+        shell: bash
+        run: |
+          set -euo pipefail
+          python build/python/202608281112-compact-parquet-companies.py verify \
+            --root staged/candidate \
+            --expected-source-commit "${{ needs.source-boundary.outputs.source_sha }}" \
+            > verification.json
+          cmp staged/build-report.json verification.json
+          test "$(jq -r '.status' verification.json)" = PASS
+          test "$(jq -r '.companies_selected' verification.json)" -eq 294904
+          test "$(jq -r '.basic_company_rows_scanned' verification.json)" -gt 294904
+          test "$(jq -r '.company_repd_candidates' verification.json)" -gt 0
+          test "$(jq -r '.solar_company_repd_relationships' verification.json)" -gt 0
+          test "$(jq -r '.candidate_files' verification.json)" -ge 5
+          test "$(jq -r '.candidate_bytes' verification.json)" -le 30000000
+          test "$(jq -r '.source_commit' verification.json)" = "${{ needs.source-boundary.outputs.source_sha }}"
+          test ! -e staged/candidate/companies-v1.parquet
+          test "$(find staged/candidate -maxdepth 1 -type f -name '*.parquet' | wc -l)" -eq 2
+          test -f staged/candidate/company-repd-relationships-v1.parquet
+          test -f staged/candidate/solar-company-repd-relationships-v1.parquet
+          test -f staged/candidate/relationship-report-v1.json
+          test -f staged/candidate/relationship-parquet-audit-v1.json
+          test -f staged/candidate/manifest-compact-v1.json
+          test -z "$(find staged/candidate -type f -size +20000000c -print -quit)"
+          test -z "$(find staged/candidate -type l -print -quit)"
+          test -z "$(find staged/candidate -type f \( -name '*.zip' -o -name '*.csv' -o -name '*.ndjson' -o -name '*.gz' \) -print -quit)"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: company-repd-relationship-readback-202608272155-${{ github.run_id }}
+          path: verification.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  publish-candidate-only:
+    needs: [source-boundary, artifact-readback]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ needs.source-boundary.outputs.source_sha }}
+          fetch-depth: 1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: company-repd-relationship-build-202608272155-${{ github.run_id }}
+          path: staged
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: company-repd-relationship-readback-202608272155-${{ github.run_id }}
+          path: readback
+      - name: Create only the immutable compact candidate branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_EVENT_NAME" = push
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "${{ needs.source-boundary.outputs.source_sha }}"
+          test ! -e data/current
+          test ! -e "$CANDIDATE_PATH"
+          cmp staged/build-report.json readback/verification.json
+
+          candidate=staged/candidate
+          manifest="$candidate/manifest-compact-v1.json"
+          test "$(jq -r '.deployment_state' "$manifest")" = not-authorised
+          test "$(jq -r '.promotion_eligible' "$manifest")" = false
+          test "$(jq -r '.source_commit' "$manifest")" = "${{ needs.source-boundary.outputs.source_sha }}"
+          test "$(jq -r '.output_policy.canonical_relationship_format' "$manifest")" = PARQUET
+          test "$(jq -r '.output_policy.aggregate_report_format' "$manifest")" = JSON
+          test "$(jq -r '.output_policy.duckdb_version' "$manifest")" = 1.3.2
+          test "$(jq -r '.output_policy.relationship_tables' "$manifest")" -eq 2
+          test "$(jq -r '.output_policy.company_master_files' "$manifest")" -eq 0
+          test "$(jq -r '.output_policy.company_master_rows' "$manifest")" -eq 0
+          test "$(jq -r '.output_policy.embedded_relationship_json_fields' "$manifest")" -eq 0
+          test "$(jq -r '.output_policy.logical_json_cartridges' "$manifest")" -eq 0
+          test "$(jq -r '.output_policy.raw_company_json_files' "$manifest")" -eq 0
+          test "$(jq -r '.output_policy.raw_archives' "$manifest")" -eq 0
+          test "$(jq -r '.output_policy.duplicate_corpus_builds' "$manifest")" -eq 0
+          test "$(jq '.datasets | has("companies")' "$manifest")" = false
+          test ! -e "$candidate/companies-v1.parquet"
+          test -f "$candidate/company-repd-relationships-v1.parquet"
+          test -f "$candidate/solar-company-repd-relationships-v1.parquet"
+          test -f "$candidate/relationship-report-v1.json"
+          test -f "$candidate/relationship-parquet-audit-v1.json"
+          test "$(find "$candidate" -maxdepth 1 -type f -name '*.parquet' | wc -l)" -eq 2
+          test -z "$(find "$candidate" -type l -print -quit)"
+          test -z "$(find "$candidate" -type f -size +20000000c -print -quit)"
+          test "$(find "$candidate" -type f -printf '%s\n' | awk '{sum += $1} END {print sum + 0}')" -le 30000000
+          {
+            printf '%s\n' \
+              company-repd-relationships-v1.parquet \
+              solar-company-repd-relationships-v1.parquet \
+              relationship-report-v1.json \
+              relationship-parquet-audit-v1.json \
+              manifest-compact-v1.json
+            jq -r '.evidence[].path' "$manifest"
+          } | sort -u > /tmp/expected-candidate-files
+          find "$candidate" -type f -printf '%P\n' | sort > /tmp/actual-candidate-files
+          diff -u /tmp/expected-candidate-files /tmp/actual-candidate-files
+
+          mkdir -p "$CANDIDATE_PATH"
+          cp -a "$candidate/." "$CANDIDATE_PATH/"
+          git add "$CANDIDATE_PATH"
+          test -n "$(git diff --cached --name-only)"
+          staged_total=0
+          while IFS= read -r path; do
+            case "$path" in
+              data/candidates/202608272155-compact/*) ;;
+              *) echo "Candidate commit escaped its immutable path: $path" >&2; exit 1 ;;
+            esac
+            test "$(git ls-files -s -- "$path" | awk '{print $1}')" = 100644
+            blob_size="$(git cat-file -s ":$path")"
+            test "$blob_size" -le 20000000
+            staged_total=$((staged_total + blob_size))
+          done < <(git diff --cached --name-only)
+          test "$staged_total" -le 30000000
+          if git diff --cached --name-only | grep -Eq '(^|/)current/|(^|/)pages/|(^|/)releases/'; then
+            echo "Candidate commit attempted a stable or deployment mutation" >&2
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          GIT_AUTHOR_DATE="$FIXED_GENERATED_AT" GIT_COMMITTER_DATE="$FIXED_GENERATED_AT" \
+            git commit -m "data: quarantine compact Company REPD relationships $GENERATION"
+          candidate_commit="$(git rev-parse HEAD)"
+          candidate_ref="refs/heads/$CANDIDATE_BRANCH"
+          if git push --force-with-lease="$candidate_ref:" origin "HEAD:$candidate_ref"; then
+            exit 0
+          fi
+          git fetch --no-tags origin "$candidate_ref"
+          test "$(git rev-parse FETCH_HEAD)" = "$candidate_commit"

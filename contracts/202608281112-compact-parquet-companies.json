@@ -1,0 +1,149 @@
+{
+  "dependency_sha256": {
+    "build/python/202608262245-compile-companies-house.py": "f7e5ebfb6ddc885b3b2a05deeedff5bf4b4f808b78ef62974baa7025487dcc90",
+    "build/python/202608262245-merge-accounts.py": "d6ff055510c9b42a1710d6f4cdd22288d7334d20e3ee4190be13ff5c219c2e2e",
+    "build/python/202608271507-verify-companies-house-candidate.py": "22e8393dc55606e3f24381ed0fad0bf0ae545c51127a7a68c90f65e3a8558f02",
+    "build/python/202608272016-verify-companies-house-candidate.py": "b37c634d3369c8110712aaf36cffb5df303d4f93eb64b79bae224bdc69441033",
+    "build/python/202608272035-verify-companies-house-candidate.py": "5c3a3af787520bdb7936005d7247fb6060f36fae981f78c587ff35d6a55343db",
+    "build/python/202608272120-verify-companies-house-candidate.py": "d1e1cb3871fca3f6cfab62d60b763d62573935ad3c4d592842ffce106f9fd3b5",
+    "build/python/202608272155-download-planned-archive.py": "d4f8d4b3d98e3c8df69cf668743320b18c177742113c7b331ab12f4dd9e78387",
+    "build/python/202608272155-extract-bounded-accounts.py": "717165dbfa9edaf16cf0a06b83f31153faabe1daf48960a3afbcd3b67a958823",
+    "build/python/202608272155-verify-companies-house-candidate.py": "b81e200a44a2f293e71535a07ee6fcca54fca25915524af8ac1f28ea44b397fd"
+  },
+  "duckdb_version": "1.3.2",
+  "expected_companies_selected": 294904,
+  "generation": "202608272155",
+  "grains": {
+    "company-repd-relationships-v1.parquet": {
+      "declared_key": [
+        "company_number",
+        "repd_ref",
+        "evidence_type"
+      ],
+      "evidence_class": "CANDIDATE",
+      "grain": "one cross-repository candidate Company-REPD relationship",
+      "identity_posture": "CANDIDATE_ONLY_NOT_CONFIRMED_OWNERSHIP"
+    },
+    "solar-company-repd-relationships-v1.parquet": {
+      "declared_key": [
+        "company_number",
+        "repd_ref",
+        "evidence_type"
+      ],
+      "evidence_class": "CANDIDATE",
+      "grain": "one solar-filtered candidate Company-REPD relationship",
+      "identity_posture": "CANDIDATE_ONLY_NOT_CONFIRMED_OWNERSHIP"
+    }
+  },
+  "hard_gates": {
+    "companies_selected": 294904,
+    "company_master_files": 0,
+    "company_master_rows": 0,
+    "compression": "ZSTD",
+    "duplicate_corpus_builds": 0,
+    "embedded_relationship_json_fields": 0,
+    "landed_duckdb_readback": true,
+    "logical_json_cartridges": 0,
+    "null_declared_keys": 0,
+    "promotion_eligible": false,
+    "raw_archives": 0,
+    "raw_company_json_files": 0,
+    "rows_equal_distinct_declared_keys": true,
+    "typed_column_mismatches": 0
+  },
+  "inputs": {
+    "acquisition_run_id": 33123064395,
+    "acquisition_source_commit": "72c4e033f536d793e1a357b108b05fbac43e8d09",
+    "download_plan_sha256": "4451ed5da8cc2f9246f2e6cc06f120faec8efeb8e19c3bac3919975073e7025e",
+    "pipelinenews_commit": "35f35ada161223fb3ee19e525664ee7f17df1ddd",
+    "retained_artifacts": [
+      {
+        "digest": "sha256:5458cb47d45107be3468472da15d02f18e0b5c0992f10c594af6897f2aea8aaa",
+        "name": "companies-plan-202608272155-33123064395"
+      },
+      {
+        "digest": "sha256:73cfb68813a6524b23eee4ae45504d3a2bed2f0035116cc0efa049c2b62d2b1c",
+        "name": "accounts-202608272155-33123064395-0"
+      },
+      {
+        "digest": "sha256:3da269b26136b8ca6b32e8200ae19527d8fb83f7836a661685fab78662047682",
+        "name": "accounts-202608272155-33123064395-1"
+      },
+      {
+        "digest": "sha256:4f37aa9ef85a32270d297cfbcd37606c5cad04b25af3db0c881a8324a0ccaf03",
+        "name": "accounts-202608272155-33123064395-2"
+      }
+    ],
+    "source_parent_commit": "49fa8deaac277794251eb808a4747b09a35cda3c"
+  },
+  "maximum_file_bytes": 20000000,
+  "maximum_total_bytes": 30000000,
+  "outputs": {
+    "audit": "relationship-parquet-audit-v1.json",
+    "company_repd_candidates": "company-repd-relationships-v1.parquet",
+    "manifest": "manifest-compact-v1.json",
+    "report": "relationship-report-v1.json",
+    "solar_company_repd_relationships": "solar-company-repd-relationships-v1.parquet"
+  },
+  "owner": "Ventusltd/companies",
+  "parquet_compression": "ZSTD",
+  "purpose": "Use ephemeral GitHub Actions compute to scan pinned Companies House inputs and retain only compact cross-repository relationship tables and an aggregate report.",
+  "relationship_schema": [
+    {"duckdb_type": "VARCHAR", "name": "generation", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "relationship_repository", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "relationship_repository_commit", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "company_number", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "company_name", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "company_register_url", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "repd_repository", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "repd_commit", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "repd_path", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "repd_ref", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "evidence_class", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "evidence_type", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "gg_project_id", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "project", "nullable": true},
+    {"duckdb_type": "VARCHAR", "name": "operator", "nullable": true},
+    {"duckdb_type": "VARCHAR", "name": "technology", "nullable": false},
+    {"duckdb_type": "DECIMAL(38,6)", "name": "capacity_mw", "nullable": true},
+    {"duckdb_type": "VARCHAR", "name": "status", "nullable": true},
+    {"duckdb_type": "DOUBLE", "name": "latitude", "nullable": true},
+    {"duckdb_type": "DOUBLE", "name": "longitude", "nullable": true},
+    {"duckdb_type": "VARCHAR", "name": "atlas_url", "nullable": true},
+    {"duckdb_type": "VARCHAR", "name": "relationship_sha256", "nullable": false}
+  ],
+  "resume_generation": "202608281112",
+  "schema": "companies-house-relationship-report-contract-v1",
+  "solar_relationship_schema": [
+    {"duckdb_type": "VARCHAR", "name": "generation", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "relationship_repository", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "relationship_repository_commit", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "company_number", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "company_name", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "company_register_url", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "repd_repository", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "repd_commit", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "repd_path", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "repd_ref", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "evidence_class", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "evidence_type", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "gg_project_id", "nullable": false},
+    {"duckdb_type": "VARCHAR", "name": "project", "nullable": true},
+    {"duckdb_type": "VARCHAR", "name": "operator", "nullable": true},
+    {"duckdb_type": "VARCHAR", "name": "technology", "nullable": false},
+    {"duckdb_type": "DECIMAL(38,6)", "name": "capacity_mw", "nullable": true},
+    {"duckdb_type": "VARCHAR", "name": "status", "nullable": true},
+    {"duckdb_type": "DOUBLE", "name": "latitude", "nullable": true},
+    {"duckdb_type": "DOUBLE", "name": "longitude", "nullable": true},
+    {"duckdb_type": "VARCHAR", "name": "atlas_url", "nullable": true},
+    {"duckdb_type": "VARCHAR", "name": "relationship_sha256", "nullable": false}
+  ],
+  "source_boundary": [
+    ".github/workflows/202608281112-compact-parquet-companies-candidate.yml",
+    "README.md",
+    "build/python/202608281112-compact-parquet-companies.py",
+    "contracts/202608281112-compact-parquet-companies.json",
+    "tests/test_202608281112_compact_parquet_companies.py"
+  ],
+  "supersedes_failed_run_id": 33149009261
+}
