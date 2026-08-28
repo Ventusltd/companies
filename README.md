@@ -2,19 +2,19 @@
 
 Companies House public-data processing for Deploy Net Zero.
 
-The repository retains reviewed acquisition and accounts-extraction code. The current recovery checkpoint, `202608281112`, builds a compact relationship-and-report candidate only; it does not publish or overwrite a stable dataset.
+The repository retains reviewed acquisition and accounts-extraction code. The current recovery checkpoint, `202608281337`, builds a key-only relationship-and-report candidate; it does not publish or overwrite a stable dataset.
 
 ## Compact relationship candidate
 
 GitHub Actions provides the transient compute, while the GitHub REST API verifies run and retained-artifact provenance. The planned Companies House bulk archive is downloaded once into temporary runner storage; the Companies House REST API is not used. The expected 294,904-company selected-union closure is a validation measure, not a durable company dataset; the aggregate report separately records the full number of Basic Company rows scanned. The checkpoint writes only:
 
-- `company-repd-relationships-v1.parquet`, containing every candidate Company-to-REPD edge;
-- `solar-company-repd-relationships-v1.parquet`, containing the Solar-to-Company-to-REPD subset;
+- `company-repd-relationships-v1.parquet`, containing only the Company number, REPD reference and evidence type for every candidate edge;
+- `solar-company-repd-relationships-v1.parquet`, containing the exact three-key Solar-to-Company-to-REPD subset derived transiently from pinned REPD technology;
 - a compact aggregate report, bounded manifest, DuckDB audit and source evidence.
 
-Parquet is written with DuckDB 1.3.2 and ZSTD compression, then read back against its declared schemas, row hashes and keys. Each file is hard-capped at 20 MB and the durable closure at 30 MB total. Relationship edges retain stable company, REPD and evidence references, including exact cross-repository commit and path provenance. No raw or selected Companies database, company-master Parquet, embedded relationship JSON, JSON cartridge or source archive is part of the durable closure.
+Parquet is written with DuckDB 1.3.2 and ZSTD compression, then independently read back against an exact three-column schema, composite keys, a dataset-level semantic digest and whole-file SHA receipts. Each file is hard-capped at 20 MB and the durable closure at 30 MB total. Descriptive fields, technology, row-level repository provenance and per-row digests are forbidden from the bridges; exact source commits and paths are recorded once in the manifest and joined from the owning repositories when needed. No raw or selected Companies database, company-master Parquet, embedded relationship JSON, JSON cartridge or source archive is part of the durable closure.
 
-Publication is restricted to an immutable candidate branch. `main`, `data/current/`, Pages and releases remain unchanged. Historical workflows remain in Git as recovery evidence but are superseded as publication paths by checkpoint `202608281112`.
+Publication is restricted to an immutable candidate branch. `main`, `data/current/`, Pages and releases remain unchanged. Historical workflows live under `.github/workflow-history/` as inert audit evidence; checkpoint `202608281337` is the sole active publication path.
 
 ## Historical annual workflow
 
