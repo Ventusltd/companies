@@ -1,0 +1,235 @@
+name: 202608300312 Sync verified Grid Atlas V9 link contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/202608300312-sync-gridatlas-v9-link-contract.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '17,47 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: companies-gridatlas-v9-link-contract
+  cancel-in-progress: false
+
+env:
+  ATLAS_STATE_URL: https://ventusltd.github.io/gridatlas/state/live-set.json
+  MINIMUM_ATLAS_GENERATION: '202608292311'
+  GOLDEN_REPD_REF: '16135'
+  COMPANIES_CONTRACT: contracts/202608281337-compact-parquet-companies.json
+  LINK_CONTRACT: state/atlas-v9-link-contract.json
+  LINK_AUDIT: state/atlas-v9-link-audit.json
+
+jobs:
+  sync:
+    name: Preserve key-only Parquet and publish one verified URL template
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact Companies source boundary
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 20
+          persist-credentials: true
+
+      - name: Prove Companies privacy and key-only boundaries
+        run: |
+          set -euo pipefail
+          test -f "$COMPANIES_CONTRACT"
+          test "$(jq -r '.schema' "$COMPANIES_CONTRACT")" = companies-house-relationship-report-contract-v1
+          test "$(jq -c '[.relationship_schema[].name]' "$COMPANIES_CONTRACT")" = '["company_number","repd_ref","evidence_type"]'
+          test "$(jq -c '[.solar_relationship_schema[].name]' "$COMPANIES_CONTRACT")" = '["company_number","repd_ref","evidence_type"]'
+          test "$(jq -r '.hard_gates.bridge_columns_per_table' "$COMPANIES_CONTRACT")" = 3
+          test "$(jq -r '.hard_gates.descriptive_edge_columns' "$COMPANIES_CONTRACT")" = 0
+          test "$(jq -r '.hard_gates.row_level_provenance_columns' "$COMPANIES_CONTRACT")" = 0
+          test "$(jq -r '.hard_gates.per_row_digest_columns' "$COMPANIES_CONTRACT")" = 0
+          test "$(jq -r '.hard_gates.raw_archives' "$COMPANIES_CONTRACT")" = 0
+          test "$(jq -r '.hard_gates.company_master_files' "$COMPANIES_CONTRACT")" = 0
+          test "$(jq -r '.hard_gates.company_master_rows' "$COMPANIES_CONTRACT")" = 0
+          test "$(jq -r '.duckdb_version' "$COMPANIES_CONTRACT")" = 1.3.2
+          git diff --exit-code
+
+      - name: Resolve verified Atlas receiver
+        id: atlas
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --retry 3 --retry-delay 2 \
+            "$ATLAS_STATE_URL" -o /tmp/atlas-state.json
+          python3 -m json.tool /tmp/atlas-state.json >/dev/null
+
+          generation="$(jq -r '.generation // empty' /tmp/atlas-state.json)"
+          if [[ ! "$generation" =~ ^[0-9]{12}$ ]] || (( 10#$generation < 10#$MINIMUM_ATLAS_GENERATION )); then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo "Atlas generation $generation is below required $MINIMUM_ATLAS_GENERATION; Companies remains unchanged." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          release_id="$(jq -r '.current.release_id // empty' /tmp/atlas-state.json)"
+          live_url="$(jq -r '.current.live_url // empty' /tmp/atlas-state.json)"
+          source_commit="$(jq -r '.current.source_commit // empty' /tmp/atlas-state.json)"
+          publication_commit="$(jq -r '.current.publication_commit // empty' /tmp/atlas-state.json)"
+          promotion="$(jq -r '.verification.promotion_eligible // false' /tmp/atlas-state.json)"
+          failed="$(jq -r '.verification.failed_gates // 999' /tmp/atlas-state.json)"
+
+          test "$promotion" = true
+          test "$failed" = 0
+          [[ "$release_id" =~ ^[0-9]{12}-atlas-v9$ ]]
+          [[ "$live_url" == "https://ventusltd.github.io/gridatlas/$release_id/" ]]
+          [[ "$source_commit" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$publication_commit" =~ ^[a-f0-9]{40}$ ]]
+
+          curl --fail --location --silent --show-error --retry 3 --retry-delay 2 \
+            "${live_url}release-manifest.json" -o /tmp/atlas-release-manifest.json
+          test "$(jq -r '.release_id' /tmp/atlas-release-manifest.json)" = "$release_id"
+          effective="$(curl --fail --location --silent --show-error --retry 3 --retry-delay 2 \
+            --output /tmp/atlas-golden.html --write-out '%{url_effective}' \
+            "${live_url}?repd_ref=${GOLDEN_REPD_REF}")"
+          test "$effective" = "${live_url}?repd_ref=${GOLDEN_REPD_REF}"
+          grep -q 'ventus-corev8engine.js' /tmp/atlas-golden.html
+
+          echo 'ready=true' >> "$GITHUB_OUTPUT"
+          echo "generation=$generation" >> "$GITHUB_OUTPUT"
+          echo "release_id=$release_id" >> "$GITHUB_OUTPUT"
+          echo "live_url=$live_url" >> "$GITHUB_OUTPUT"
+          echo "source_commit=$source_commit" >> "$GITHUB_OUTPUT"
+          echo "publication_commit=$publication_commit" >> "$GITHUB_OUTPUT"
+
+      - name: Build compact link template and audit
+        if: steps.atlas.outputs.ready == 'true'
+        env:
+          ATLAS_GENERATION: ${{ steps.atlas.outputs.generation }}
+          ATLAS_RELEASE_ID: ${{ steps.atlas.outputs.release_id }}
+          ATLAS_LIVE_URL: ${{ steps.atlas.outputs.live_url }}
+          ATLAS_SOURCE_COMMIT: ${{ steps.atlas.outputs.source_commit }}
+          ATLAS_PUBLICATION_COMMIT: ${{ steps.atlas.outputs.publication_commit }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from __future__ import annotations
+          import hashlib
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          contract_path = Path(os.environ['LINK_CONTRACT'])
+          previous = None
+          if contract_path.is_file():
+              previous = json.loads(contract_path.read_text(encoding='utf-8'))
+
+          atlas_url = os.environ['ATLAS_LIVE_URL']
+          release_id = os.environ['ATLAS_RELEASE_ID']
+          template = f'{atlas_url}?repd_ref={{repd_ref}}'
+          golden = f'{atlas_url}?repd_ref={os.environ["GOLDEN_REPD_REF"]}'
+          payload = {
+              'schema': 'companies.gridatlas-v9-link-contract.v1',
+              'classification': 'VERIFIED_KEY_ONLY_ATLAS_LINK_TEMPLATE',
+              'generated_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+              'atlas': {
+                  'generation': os.environ['ATLAS_GENERATION'],
+                  'release_id': release_id,
+                  'base_url': atlas_url,
+                  'source_commit': os.environ['ATLAS_SOURCE_COMMIT'],
+                  'publication_commit': os.environ['ATLAS_PUBLICATION_COMMIT'],
+                  'state_url': os.environ['ATLAS_STATE_URL'],
+              },
+              'join': {
+                  'relationship_key': 'repd_ref',
+                  'query_parameter': 'repd_ref',
+                  'identity_rule': 'EXACT_REPD_REF_ONLY',
+                  'url_template': template,
+                  'golden_repd_ref': os.environ['GOLDEN_REPD_REF'],
+                  'golden_url': golden,
+              },
+              'relationship_tables': {
+                  'company_repd': 'company-repd-relationships-v1.parquet',
+                  'solar_company_repd': 'solar-company-repd-relationships-v1.parquet',
+                  'columns': ['company_number', 'repd_ref', 'evidence_type'],
+                  'row_url_columns': 0,
+                  'descriptive_columns': 0,
+              },
+              'privacy': {
+                  'personal_data': False,
+                  'director_names': False,
+                  'individual_psc': False,
+                  'dates_of_birth': False,
+                  'residential_addresses': False,
+                  'raw_company_archive': False,
+              },
+              'storage_rule': 'One dataset-level URL template; never duplicate URLs into relationship rows.',
+              'rollback': None,
+          }
+          if previous and previous.get('atlas', {}).get('release_id') != release_id:
+              payload['rollback'] = {
+                  'release_id': previous.get('atlas', {}).get('release_id'),
+                  'base_url': previous.get('atlas', {}).get('base_url'),
+                  'classification': previous.get('classification'),
+              }
+
+          contract_path.parent.mkdir(parents=True, exist_ok=True)
+          text = json.dumps(payload, indent=2, sort_keys=True) + '\n'
+          contract_path.write_text(text, encoding='utf-8', newline='\n')
+          audit = {
+              'schema': 'companies.gridatlas-v9-link-audit.v1',
+              'classification': 'PASS',
+              'atlas_release_id': release_id,
+              'contract_sha256': hashlib.sha256(text.encode('utf-8')).hexdigest(),
+              'companies_contract': os.environ['COMPANIES_CONTRACT'],
+              'relationship_columns': ['company_number', 'repd_ref', 'evidence_type'],
+              'bridge_columns_per_table': 3,
+              'row_url_columns': 0,
+              'descriptive_edge_columns': 0,
+              'raw_archives': 0,
+              'company_master_files': 0,
+              'golden_url': golden,
+              'http_effective_url_preserved': True,
+              'privacy': 'NO_PERSONAL_DATA',
+          }
+          Path(os.environ['LINK_AUDIT']).write_text(
+              json.dumps(audit, indent=2, sort_keys=True) + '\n', encoding='utf-8', newline='\n'
+          )
+          PY
+          python3 -m json.tool "$LINK_CONTRACT" >/dev/null
+          python3 -m json.tool "$LINK_AUDIT" >/dev/null
+          test "$(jq -r '.classification' "$LINK_CONTRACT")" = VERIFIED_KEY_ONLY_ATLAS_LINK_TEMPLATE
+          test "$(jq -r '.atlas.release_id' "$LINK_CONTRACT")" = "$ATLAS_RELEASE_ID"
+          test "$(jq -r '.join.identity_rule' "$LINK_CONTRACT")" = EXACT_REPD_REF_ONLY
+          test "$(jq -r '.relationship_tables.row_url_columns' "$LINK_CONTRACT")" = 0
+          test "$(jq -c '.relationship_tables.columns' "$LINK_CONTRACT")" = '["company_number","repd_ref","evidence_type"]'
+          test "$(jq -r '.classification' "$LINK_AUDIT")" = PASS
+          git diff --check
+
+      - name: Compare-and-swap verified contract onto main
+        if: steps.atlas.outputs.ready == 'true'
+        env:
+          ATLAS_RELEASE_ID: ${{ steps.atlas.outputs.release_id }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- "$LINK_CONTRACT" "$LINK_AUDIT"; then
+            echo "Companies already points to $ATLAS_RELEASE_ID" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+          git add "$LINK_CONTRACT" "$LINK_AUDIT"
+          mapfile -t staged < <(git diff --cached --name-only | sort)
+          expected=("$LINK_AUDIT" "$LINK_CONTRACT")
+          test "${staged[*]}" = "${expected[*]}"
+          git config user.name companies-atlas-link-bot
+          git config user.email actions@users.noreply.github.com
+          git commit -m "link: verified Grid Atlas $ATLAS_RELEASE_ID template"
+          git push origin HEAD:main
+          {
+            echo '## Companies → Grid Atlas V9 contract updated'
+            echo
+            echo "- Atlas release: $ATLAS_RELEASE_ID"
+            echo "- Join key: repd_ref"
+            echo '- Durable URLs per relationship row: 0'
+            echo '- Parquet relationship schema changed: no'
+            echo '- Personal data added: no'
+          } >> "$GITHUB_STEP_SUMMARY"
