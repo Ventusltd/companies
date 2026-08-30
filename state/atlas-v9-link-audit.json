@@ -1,0 +1,20 @@
+{
+  "atlas_release_id": "202608292311-atlas-v9",
+  "bridge_columns_per_table": 3,
+  "classification": "PASS",
+  "companies_contract": "contracts/202608281337-compact-parquet-companies.json",
+  "company_master_files": 0,
+  "contract_sha256": "8d84c44e407974f51d7c6085fac38ffa46ddf2f0c1191b07f1e8f49d84697a01",
+  "descriptive_edge_columns": 0,
+  "golden_url": "https://ventusltd.github.io/gridatlas/202608292311-atlas-v9/?repd_ref=16135",
+  "http_effective_url_preserved": true,
+  "privacy": "NO_PERSONAL_DATA",
+  "raw_archives": 0,
+  "relationship_columns": [
+    "company_number",
+    "repd_ref",
+    "evidence_type"
+  ],
+  "row_url_columns": 0,
+  "schema": "companies.gridatlas-v9-link-audit.v1"
+}

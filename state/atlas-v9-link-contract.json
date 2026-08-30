@@ -1,0 +1,42 @@
+{
+  "atlas": {
+    "base_url": "https://ventusltd.github.io/gridatlas/202608292311-atlas-v9/",
+    "generation": "202608292311",
+    "publication_commit": "0597f4654a675e575690a6eab43f3c17707ef613",
+    "release_id": "202608292311-atlas-v9",
+    "source_commit": "150c4ad7b04686182c27c47ee581960396378dec",
+    "state_url": "https://ventusltd.github.io/gridatlas/state/live-set.json"
+  },
+  "classification": "VERIFIED_KEY_ONLY_ATLAS_LINK_TEMPLATE",
+  "generated_at": "2026-08-30T02:41:36.558300Z",
+  "join": {
+    "golden_repd_ref": "16135",
+    "golden_url": "https://ventusltd.github.io/gridatlas/202608292311-atlas-v9/?repd_ref=16135",
+    "identity_rule": "EXACT_REPD_REF_ONLY",
+    "query_parameter": "repd_ref",
+    "relationship_key": "repd_ref",
+    "url_template": "https://ventusltd.github.io/gridatlas/202608292311-atlas-v9/?repd_ref={repd_ref}"
+  },
+  "privacy": {
+    "dates_of_birth": false,
+    "director_names": false,
+    "individual_psc": false,
+    "personal_data": false,
+    "raw_company_archive": false,
+    "residential_addresses": false
+  },
+  "relationship_tables": {
+    "columns": [
+      "company_number",
+      "repd_ref",
+      "evidence_type"
+    ],
+    "company_repd": "company-repd-relationships-v1.parquet",
+    "descriptive_columns": 0,
+    "row_url_columns": 0,
+    "solar_company_repd": "solar-company-repd-relationships-v1.parquet"
+  },
+  "rollback": null,
+  "schema": "companies.gridatlas-v9-link-contract.v1",
+  "storage_rule": "One dataset-level URL template; never duplicate URLs into relationship rows."
+}
