@@ -1,21 +1,21 @@
 {
   "atlas": {
-    "base_url": "https://ventusltd.github.io/gridatlas/202608292311-atlas-v9/",
-    "generation": "202608292311",
-    "publication_commit": "0597f4654a675e575690a6eab43f3c17707ef613",
-    "release_id": "202608292311-atlas-v9",
-    "source_commit": "150c4ad7b04686182c27c47ee581960396378dec",
+    "base_url": "https://ventusltd.github.io/gridatlas/202608300453-atlas-v9/",
+    "generation": "202608300453",
+    "publication_commit": "bf16a713b9e5d926822efe80c681c017cc4edcee",
+    "release_id": "202608300453-atlas-v9",
+    "source_commit": "4f3e8fc5c7ea28edf83dbac9b231024723bcf231",
     "state_url": "https://ventusltd.github.io/gridatlas/state/live-set.json"
   },
   "classification": "VERIFIED_KEY_ONLY_ATLAS_LINK_TEMPLATE",
-  "generated_at": "2026-08-30T02:41:36.558300Z",
+  "generated_at": "2026-08-30T04:15:30.097671Z",
   "join": {
-    "golden_repd_ref": "16135",
-    "golden_url": "https://ventusltd.github.io/gridatlas/202608292311-atlas-v9/?repd_ref=16135",
+    "golden_repd_ref": "13599",
+    "golden_url": "https://ventusltd.github.io/gridatlas/202608300453-atlas-v9/?repd_ref=13599",
     "identity_rule": "EXACT_REPD_REF_ONLY",
     "query_parameter": "repd_ref",
     "relationship_key": "repd_ref",
-    "url_template": "https://ventusltd.github.io/gridatlas/202608292311-atlas-v9/?repd_ref={repd_ref}"
+    "url_template": "https://ventusltd.github.io/gridatlas/202608300453-atlas-v9/?repd_ref={repd_ref}"
   },
   "privacy": {
     "dates_of_birth": false,
@@ -36,7 +36,11 @@
     "row_url_columns": 0,
     "solar_company_repd": "solar-company-repd-relationships-v1.parquet"
   },
-  "rollback": null,
+  "rollback": {
+    "base_url": "https://ventusltd.github.io/gridatlas/202608292311-atlas-v9/",
+    "classification": "VERIFIED_KEY_ONLY_ATLAS_LINK_TEMPLATE",
+    "release_id": "202608292311-atlas-v9"
+  },
   "schema": "companies.gridatlas-v9-link-contract.v1",
   "storage_rule": "One dataset-level URL template; never duplicate URLs into relationship rows."
 }
