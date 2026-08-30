@@ -7,7 +7,7 @@ on:
       - '.github/workflows/202608300312-sync-gridatlas-v9-link-contract.yml'
   workflow_dispatch:
   schedule:
-    - cron: '25 3-5 30 8 *'
+    - cron: '25 4-8 30 8 *'
 
 permissions:
   contents: write
@@ -18,12 +18,12 @@ concurrency:
 
 env:
   ATLAS_STATE_URL: https://ventusltd.github.io/gridatlas/state/live-set.json
-  MINIMUM_ATLAS_GENERATION: '202608292311'
-  GOLDEN_REPD_REF: '16135'
+  MINIMUM_ATLAS_GENERATION: '202608300453'
+  GOLDEN_REPD_REF: '13599'
   COMPANIES_CONTRACT: contracts/202608281337-compact-parquet-companies.json
   LINK_CONTRACT: state/atlas-v9-link-contract.json
   LINK_AUDIT: state/atlas-v9-link-audit.json
-  MISSION_EXPIRES_AT: '2026-08-30T05:28:00Z'
+  MISSION_EXPIRES_AT: '2026-08-30T08:35:00Z'
 
 jobs:
   sync:
@@ -87,6 +87,11 @@ jobs:
 
           test "$promotion" = true
           test "$failed" = 0
+          test "$(jq -r '.verification.commit_lineage_attested // false' /tmp/atlas-state.json)" = true
+          test "$(jq -r '.verification.exact_repd_deep_link_resolved // false' /tmp/atlas-state.json)" = true
+          test "$(jq -r '.verification.exact_repd_fly_to // false' /tmp/atlas-state.json)" = true
+          test "$(jq -r '.current.deep_link_receiver.identity_rule // empty' /tmp/atlas-state.json)" = EXACT_REPD_REF_ONLY
+          jq -e '.current.deep_link_receiver.synthetic_receiver == false' /tmp/atlas-state.json >/dev/null
           [[ "$release_id" =~ ^[0-9]{12}-atlas-v9$ ]]
           [[ "$live_url" == "https://ventusltd.github.io/gridatlas/$release_id/" ]]
           [[ "$source_commit" =~ ^[a-f0-9]{40}$ ]]
@@ -253,5 +258,5 @@ jobs:
             echo '- Durable URLs per relationship row: 0'
             echo '- Parquet relationship schema changed: no'
             echo '- Personal data added: no'
-            echo '- Cadence: 03:25, 04:25 and 05:25 UTC; retires at 05:28 UTC.'
+            echo '- Cadence: hourly through 09:35 BST; hard expiry enforced.'
           } >> "$GITHUB_STEP_SUMMARY"
