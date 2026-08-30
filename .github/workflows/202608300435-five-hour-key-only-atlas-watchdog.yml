@@ -1,5 +1,5 @@
 name: 202608300435 Five-hour Companies key-only Atlas watchdog
-run-name: Companies key-only Atlas check ${{ github.run_number }}
+run-name: Companies key-only Atlas check ${{ github.run_number }} from ${{ github.sha }}
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
       - '.github/workflows/202608300435-five-hour-key-only-atlas-watchdog.yml'
   workflow_dispatch:
   schedule:
-    - cron: '50 4-8 30 8 *'
+    - cron: '30 4-8 30 8 *'
 
 permissions:
   contents: read
@@ -38,10 +38,11 @@ jobs:
         run: |
           set -euo pipefail
           now="$(date -u +%s)"
+          starts="$(date -u -d "$MISSION_INCEPTED_AT" +%s)"
           expires="$(date -u -d "$MISSION_EXPIRES_AT" +%s)"
-          if (( now > expires )); then
+          if (( now < starts || now > expires )); then
             echo 'active=false' >> "$GITHUB_OUTPUT"
-            echo "Companies five-hour key-only mission retired at $MISSION_EXPIRES_AT; no mutation." >> "$GITHUB_STEP_SUMMARY"
+            echo "Companies five-hour key-only mission inactive outside $MISSION_INCEPTED_AT to $MISSION_EXPIRES_AT." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           echo 'active=true' >> "$GITHUB_OUTPUT"
@@ -54,11 +55,16 @@ jobs:
           fetch-depth: 40
           persist-credentials: false
 
-      - name: Resolve exact promoted GridAtlas receiver
+      - name: Require exact main and resolve promoted GridAtlas receiver
         if: steps.window.outputs.active == 'true'
         id: atlas
         run: |
           set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+
           mkdir -p work
           curl --fail --location --silent --show-error --retry 3 --retry-delay 2 \
             "$ATLAS_STATE_URL" -o work/atlas-live-set.json
@@ -116,6 +122,7 @@ jobs:
           import os
           from datetime import datetime, timezone
           from pathlib import Path
+
           payload = {
               'schema': 'companies.five-hour-key-only-atlas-proof.v1',
               'classification': 'VERIFIED_KEY_ONLY_ATLAS_LINK_CONTRACT',
@@ -132,6 +139,7 @@ jobs:
               json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8', newline='\n'
           )
           PY
+
           {
             echo '## Companies key-only Atlas result'
             echo
