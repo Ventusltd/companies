@@ -1,0 +1,192 @@
+name: 202608300232 Build Companies Atlas V9 links
+run-name: Build compact Companies REPD Atlas V9 relations from ${{ github.sha }}
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/202608300232-build-atlas-v9-company-repd-links.py'
+      - '.github/workflows/202608300232-build-atlas-v9-company-repd-links.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '7,37 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: companies-atlas-v9-deep-links
+  cancel-in-progress: false
+
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+
+jobs:
+  build:
+    name: Derive compact Parquet links and prove privacy/integrity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact Companies source boundary
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 30
+          persist-credentials: true
+
+      - name: Require current main and validate bounded source
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+          python3 - <<'PY'
+          import ast
+          from pathlib import Path
+          path = Path('scripts/202608300232-build-atlas-v9-company-repd-links.py')
+          ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+          PY
+
+      - name: Configure pinned Python and DuckDB
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned analytical runtime
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check duckdb==1.3.2
+
+      - name: Fetch governed Atlas and GlobalGrid pointers
+        run: |
+          set -euo pipefail
+          rm -rf "$RUNNER_TEMP/gridatlas" "$RUNNER_TEMP/globalgrid2050"
+          git clone --depth 1 https://github.com/Ventusltd/gridatlas.git "$RUNNER_TEMP/gridatlas"
+          git clone --depth 1 https://github.com/Ventusltd/globalgrid2050.git "$RUNNER_TEMP/globalgrid2050"
+
+      - name: Build deterministic compact deep-link relation
+        id: build
+        run: |
+          set -euo pipefail
+          python3 scripts/202608300232-build-atlas-v9-company-repd-links.py \
+            --gridatlas "$RUNNER_TEMP/gridatlas" \
+            --globalgrid "$RUNNER_TEMP/globalgrid2050" \
+            --repo-root . \
+            | tee "$RUNNER_TEMP/companies-atlas-v9-result.json"
+          if test -f reports/atlas-v9-company-repd-links-manifest.json; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "release_id=$(jq -r .release_id reports/atlas-v9-company-repd-links-manifest.json)" >> "$GITHUB_OUTPUT"
+            echo "rows=$(jq -r .output_rows reports/atlas-v9-company-repd-links-manifest.json)" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prove Parquet ZSTD, URL identity and privacy contract
+        if: ${{ steps.build.outputs.ready == 'true' }}
+        run: |
+          set -euo pipefail
+          test "$(jq -r .classification reports/atlas-v9-company-repd-links-manifest.json)" = DETERMINISTIC_COMPACT_RELATION_BUILT
+          test "$(jq -r .compression reports/atlas-v9-company-repd-links-manifest.json)" = ZSTD
+          test "$(jq -r .raw_companies_house_data_stored reports/atlas-v9-company-repd-links-manifest.json)" = false
+          test "$(jq -r .personal_data reports/atlas-v9-company-repd-links-manifest.json)" = false
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          from urllib.parse import parse_qs, urlparse
+          import duckdb
+
+          manifest = json.loads(Path('reports/atlas-v9-company-repd-links-manifest.json').read_text(encoding='utf-8'))
+          output = Path(manifest['output'])
+          assert output.is_file()
+          assert hashlib.sha256(output.read_bytes()).hexdigest() == manifest['output_sha256']
+          connection = duckdb.connect()
+          columns = [row[0] for row in connection.execute(f"DESCRIBE SELECT * FROM read_parquet('{output.as_posix()}')").fetchall()]
+          assert columns == manifest['columns']
+          forbidden = {'person_name', 'officer_name', 'director_name', 'date_of_birth', 'home_address'}
+          assert not forbidden.intersection({name.lower() for name in columns})
+          bad_compression = connection.execute(
+              f"SELECT count(*) FROM parquet_metadata('{output.as_posix()}') WHERE upper(compression) <> 'ZSTD'"
+          ).fetchone()[0]
+          assert bad_compression == 0
+          rows = connection.execute(
+              f"SELECT company_number, repd_ref, technology, atlas_v9_url FROM read_parquet('{output.as_posix()}') ORDER BY company_number, repd_ref"
+          ).fetchall()
+          assert len(rows) == manifest['output_rows']
+          for company_number, repd_ref, technology, url in rows:
+              assert company_number and repd_ref and technology and url
+              assert technology in {'solar', 'bess', 'wind_onshore', 'wind_offshore'}
+              query = parse_qs(urlparse(url).query)
+              assert query.get('repd_ref') == [repd_ref]
+              assert query.get('technology') == [technology]
+          connection.close()
+          PY
+
+      - name: Enforce compact output-only boundary
+        if: ${{ steps.build.outputs.ready == 'true' }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+
+          manifest = json.loads(Path('reports/atlas-v9-company-repd-links-manifest.json').read_text(encoding='utf-8'))
+          allowed = {
+              manifest['output'],
+              'reports/atlas-v9-company-repd-links-manifest.json',
+              'state/atlas-v9-current.json',
+              *manifest['mutable_source_files_rewritten'],
+          }
+          changed = subprocess.check_output(['git', 'status', '--porcelain=v1'], text=True).splitlines()
+          for line in changed:
+              path = line[3:]
+              if ' -> ' in path:
+                  path = path.split(' -> ', 1)[1]
+              assert path in allowed, f'unexpected Companies deep-link output: {path}'
+              lowered = path.lower()
+              assert '/raw/' not in lowered and '/bulk/' not in lowered, f'raw/bulk boundary violated: {path}'
+              first = Path(path).parts[0]
+              assert not (len(first) >= 12 and first[:12].isdigit()), f'immutable timestamped output changed: {path}'
+          PY
+          find . -type d -name __pycache__ -prune -exec rm -rf {} +
+          test -z "$(git status --porcelain | grep -E '(__pycache__|\.pyc$)' || true)"
+          git diff --check
+
+      - name: Compare-and-swap compact relation onto main
+        id: commit
+        if: ${{ steps.build.outputs.ready == 'true' }}
+        run: |
+          set -euo pipefail
+          if test -z "$(git status --porcelain)"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "commit=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+          git add -A
+          git config user.name companies-atlas-link-bot
+          git config user.email actions@users.noreply.github.com
+          git commit -m "${{ steps.build.outputs.release_id }}: build compact company REPD Atlas V9 links"
+          commit="$(git rev-parse HEAD)"
+          git push origin HEAD:main
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+
+      - name: Record milestone summary
+        if: ${{ always() }}
+        run: |
+          {
+            echo '## Companies → REPD → Atlas V9'
+            echo
+            echo "- Ready: ${{ steps.build.outputs.ready || 'false' }}"
+            echo "- Atlas release: ${{ steps.build.outputs.release_id || 'waiting' }}"
+            echo "- Linked rows: ${{ steps.build.outputs.rows || '0' }}"
+            echo "- Integration commit: ${{ steps.commit.outputs.commit || 'no change' }}"
+            if test -f reports/atlas-v9-company-repd-links-manifest.json; then
+              echo "- Abstentions: $(jq -r .source_rows_abstained reports/atlas-v9-company-repd-links-manifest.json)"
+              echo "- Output bytes: $(jq -r .output_bytes reports/atlas-v9-company-repd-links-manifest.json)"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
