@@ -1,0 +1,83 @@
+name: 202608300418 Dispatch exact Atlas Companies contract
+run-name: Dispatch Companies exact-Atlas contract from ${{ github.sha }}
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/202608300418-dispatch-exact-atlas-link-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: companies-exact-atlas-contract-dispatch
+  cancel-in-progress: false
+
+env:
+  ATLAS_STATE_URL: https://ventusltd.github.io/gridatlas/state/live-set.json
+  MINIMUM_ATLAS_GENERATION: '202608300453'
+  TARGET_WORKFLOW: 202608300312-sync-gridatlas-v9-link-contract.yml
+
+jobs:
+  dispatch:
+    name: Validate exact Atlas and launch key-only contract sync
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout triggering Companies boundary
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 20
+          persist-credentials: false
+
+      - name: Require triggering commit remains on main lineage
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          test -f ".github/workflows/$TARGET_WORKFLOW"
+
+      - name: Require verified exact-REPD Atlas receiver
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --retry 3 --retry-delay 2 \
+            "$ATLAS_STATE_URL" -o /tmp/atlas-state.json
+          python3 -m json.tool /tmp/atlas-state.json >/dev/null
+          generation="$(jq -r '.generation // empty' /tmp/atlas-state.json)"
+          [[ "$generation" =~ ^[0-9]{12}$ ]]
+          (( 10#$generation >= 10#$MINIMUM_ATLAS_GENERATION ))
+          test "$(jq -r '.verification.promotion_eligible // false' /tmp/atlas-state.json)" = true
+          test "$(jq -r '.verification.failed_gates // 999' /tmp/atlas-state.json)" = 0
+          test "$(jq -r '.verification.commit_lineage_attested // false' /tmp/atlas-state.json)" = true
+          test "$(jq -r '.verification.exact_repd_deep_link_resolved // false' /tmp/atlas-state.json)" = true
+          test "$(jq -r '.verification.exact_repd_fly_to // false' /tmp/atlas-state.json)" = true
+          test "$(jq -r '.current.deep_link_receiver.identity_rule // empty' /tmp/atlas-state.json)" = EXACT_REPD_REF_ONLY
+          jq -e '.current.deep_link_receiver.synthetic_receiver == false' /tmp/atlas-state.json >/dev/null
+          echo "ATLAS_RELEASE_ID=$(jq -r '.current.release_id' /tmp/atlas-state.json)" >> "$GITHUB_ENV"
+
+      - name: Dispatch unchanged key-only Companies contract sync
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg ref main '{ref:$ref}')"
+          curl --fail-with-body --location --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/$TARGET_WORKFLOW/dispatches" \
+            --data "$payload"
+          {
+            echo '## Companies exact Atlas contract dispatched'
+            echo
+            echo "- Atlas receiver: $ATLAS_RELEASE_ID"
+            echo '- Relationship columns changed: no'
+            echo '- Row-level URLs introduced: no'
+            echo '- Personal or raw company data introduced: no'
+          } >> "$GITHUB_STEP_SUMMARY"
