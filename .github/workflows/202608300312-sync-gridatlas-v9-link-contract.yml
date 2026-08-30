@@ -7,7 +7,7 @@ on:
       - '.github/workflows/202608300312-sync-gridatlas-v9-link-contract.yml'
   workflow_dispatch:
   schedule:
-    - cron: '17,47 * * * *'
+    - cron: '27 * * * *'
 
 permissions:
   contents: write
@@ -91,6 +91,17 @@ jobs:
             "${live_url}?repd_ref=${GOLDEN_REPD_REF}")"
           test "$effective" = "${live_url}?repd_ref=${GOLDEN_REPD_REF}"
           grep -q 'ventus-corev8engine.js' /tmp/atlas-golden.html
+
+          if test -f "$LINK_CONTRACT" \
+             && test -f "$LINK_AUDIT" \
+             && test "$(jq -r '.classification' "$LINK_CONTRACT")" = VERIFIED_KEY_ONLY_ATLAS_LINK_TEMPLATE \
+             && test "$(jq -r '.atlas.release_id' "$LINK_CONTRACT")" = "$release_id" \
+             && test "$(jq -r '.classification' "$LINK_AUDIT")" = PASS \
+             && test "$(jq -r '.atlas_release_id' "$LINK_AUDIT")" = "$release_id"; then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo "Companies already carries the verified $release_id key-only link contract." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
           echo 'ready=true' >> "$GITHUB_OUTPUT"
           echo "generation=$generation" >> "$GITHUB_OUTPUT"
@@ -210,7 +221,8 @@ jobs:
           ATLAS_RELEASE_ID: ${{ steps.atlas.outputs.release_id }}
         run: |
           set -euo pipefail
-          if git diff --quiet -- "$LINK_CONTRACT" "$LINK_AUDIT"; then
+          if git ls-files --error-unmatch "$LINK_CONTRACT" "$LINK_AUDIT" >/dev/null 2>&1 \
+             && git diff --quiet -- "$LINK_CONTRACT" "$LINK_AUDIT"; then
             echo "Companies already points to $ATLAS_RELEASE_ID" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
@@ -232,4 +244,5 @@ jobs:
             echo '- Durable URLs per relationship row: 0'
             echo '- Parquet relationship schema changed: no'
             echo '- Personal data added: no'
+            echo '- Cadence: hourly at minute 27.'
           } >> "$GITHUB_STEP_SUMMARY"
